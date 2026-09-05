@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SniffTown"
+description = "A neighborhood dog community where people recognize familiar dogs, build packs, discover nearby parks, and coordinate casual walks safely."
+version = "1.0.0"
+id = "artifacts/snifftown-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19731
+
+[services.development]
+run = "pnpm --filter @workspace/snifftown-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/snifftown-app", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/snifftown-app/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19731"
+BASE_PATH = "/"

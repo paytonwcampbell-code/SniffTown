@@ -10,6 +10,16 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: dogs
+    description: Nearby dogs and pack membership
+  - name: parks
+    description: Nearby parks
+  - name: packs
+    description: Neighborhood packs
+  - name: auth
+    description: Account access and session management
+  - name: contact
+    description: Contact messages
 paths:
   /healthz:
     get:
@@ -24,6 +34,171 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dogs:
+    get:
+      operationId: listDogs
+      tags: [dogs]
+      summary: List nearby dogs
+      parameters:
+        - name: parkId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Nearby dogs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dog"
+    post:
+      operationId: createDog
+      tags: [dogs]
+      summary: Add a dog to the community
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DogInput"
+      responses:
+        "201":
+          description: Dog created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "401":
+          description: Authentication required
+  /dogs/{dogId}/pack:
+    post:
+      operationId: addDogToPack
+      tags: [dogs]
+      summary: Add a nearby dog to the signed-in user's pack
+      parameters:
+        - name: dogId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Pack membership created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackMembership"
+        "401":
+          description: Authentication required
+  /parks:
+    get:
+      operationId: listParks
+      tags: [parks]
+      summary: List nearby parks
+      responses:
+        "200":
+          description: Nearby parks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Park"
+  /packs:
+    get:
+      operationId: listPacks
+      tags: [packs]
+      summary: List public neighborhood packs
+      responses:
+        "200":
+          description: Public neighborhood packs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pack"
+  /auth/signup:
+    post:
+      operationId: signUp
+      tags: [auth]
+      summary: Create a SniffTown account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthCredentials"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "400":
+          description: Invalid credentials or existing account
+  /auth/signin:
+    post:
+      operationId: signIn
+      tags: [auth]
+      summary: Sign in to SniffTown
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthCredentials"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "401":
+          description: Invalid credentials
+  /auth/signout:
+    post:
+      operationId: signOut
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "204":
+          description: Signed out
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in user
+      responses:
+        "200":
+          description: Current user or null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+  /contact:
+    post:
+      operationId: sendContactMessage
+      tags: [contact]
+      summary: Send a message to the SniffTown team
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactMessage"
+      responses:
+        "202":
+          description: Message accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageStatus"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +208,135 @@ components:
           type: string
       required:
         - status
+    Dog:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        photoUrl:
+          type: ["string", "null"]
+        temperament:
+          type: array
+          items:
+            type: string
+        parkId:
+          type: ["string", "null"]
+        isInPack:
+          type: boolean
+      required: [id, name, ownerName, description, photoUrl, temperament, parkId, isInPack]
+    DogInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        photoUrl:
+          type: string
+        temperament:
+          type: array
+          items:
+            type: string
+        parkId:
+          type: string
+      required: [name]
+    Park:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        slug:
+          type: string
+        packCount:
+          type: number
+      required: [id, name, city, state, slug, packCount]
+    Pack:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        location:
+          type: ["string", "null"]
+        memberCount:
+          type: number
+        isPublic:
+          type: boolean
+      required: [id, name, location, memberCount, isPublic]
+    PackMembership:
+      type: object
+      properties:
+        id:
+          type: string
+        dogId:
+          type: string
+        packId:
+          type: string
+        status:
+          type: string
+      required: [id, dogId, packId, status]
+    AuthCredentials:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+          minLength: 8
+      required: [email, password]
+    AuthResult:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/CurrentUser"
+        requiresEmailVerification:
+          type: boolean
+        message:
+          type: string
+      required: [user, requiresEmailVerification, message]
+    CurrentUser:
+      type: object
+      properties:
+        id:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        displayName:
+          type: ["string", "null"]
+      required: [id, email, displayName]
+    ContactMessage:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+        message:
+          type: string
+          minLength: 1
+          maxLength: 1000
+      required: [name, email, message]
+    MessageStatus:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+        message:
+          type: string
+      required: [accepted, message]
 

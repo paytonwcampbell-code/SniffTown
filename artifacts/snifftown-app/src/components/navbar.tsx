@@ -31,15 +31,11 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            {/* Paw print abstraction without emoji */}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-              <path d="M12 18c-3.3 0-6-1.8-6-4 0-1.7 1.8-3 4-3 1.1 0 2 .4 2 1s.9 1 2 1 2-.4 2-1 1.8-1 4-1 4 1.3 4 3c0 2.2-2.7 4-6 4z" />
-              <circle cx="7.5" cy="8.5" r="2.5" />
-              <circle cx="16.5" cy="8.5" r="2.5" />
-              <circle cx="12" cy="5" r="2.5" />
-            </svg>
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}brand/snifftown-logo.png`}
+            alt=""
+            className="h-9 w-9 rounded-xl object-cover shadow-sm"
+          />
           <span className="font-display text-xl font-bold tracking-tight text-foreground">SniffTown</span>
         </Link>
 

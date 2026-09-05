@@ -7,14 +7,11 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                  <path d="M12 18c-3.3 0-6-1.8-6-4 0-1.7 1.8-3 4-3 1.1 0 2 .4 2 1s.9 1 2 1 2-.4 2-1 1.8-1 4-1 4 1.3 4 3c0 2.2-2.7 4-6 4z" />
-                  <circle cx="7.5" cy="8.5" r="2.5" />
-                  <circle cx="16.5" cy="8.5" r="2.5" />
-                  <circle cx="12" cy="5" r="2.5" />
-                </svg>
-              </div>
+              <img
+                src={`${import.meta.env.BASE_URL}brand/snifftown-logo.png`}
+                alt=""
+                className="h-8 w-8 rounded-lg object-cover shadow-sm"
+              />
               <span className="font-display text-lg font-bold tracking-tight">SniffTown</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">

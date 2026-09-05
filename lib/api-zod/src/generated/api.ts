@@ -87,7 +87,7 @@ export const ListParksResponseItem = zod.object({
   "city": zod.string(),
   "state": zod.string(),
   "slug": zod.string(),
-  "packCount": zod.int()
+  "packCount": zod.number()
 })
 export const ListParksResponse = zod.array(ListParksResponseItem)
 
@@ -99,7 +99,7 @@ export const ListPacksResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "location": zod.string().nullable(),
-  "memberCount": zod.int(),
+  "memberCount": zod.number(),
   "isPublic": zod.boolean()
 })
 export const ListPacksResponse = zod.array(ListPacksResponseItem)
@@ -113,7 +113,7 @@ export const signUpBodyPasswordMin = 8;
 
 
 export const SignUpBody = zod.object({
-  "email": zod.email(),
+  "email": zod.string(),
   "password": zod.string().min(signUpBodyPasswordMin)
 })
 
@@ -136,7 +136,7 @@ export const signInBodyPasswordMin = 8;
 
 
 export const SignInBody = zod.object({
-  "email": zod.email(),
+  "email": zod.string(),
   "password": zod.string().min(signInBodyPasswordMin)
 })
 
@@ -177,7 +177,7 @@ export const sendContactMessageBodyMessageMax = 1000;
 
 export const SendContactMessageBody = zod.object({
   "name": zod.string().min(1),
-  "email": zod.email(),
+  "email": zod.string(),
   "message": zod.string().min(1).max(sendContactMessageBodyMessageMax)
 })
 

@@ -13,6 +13,12 @@ const ACCESS_COOKIE = "snifftown_access";
 const REFRESH_COOKIE = "snifftown_refresh";
 const USER_COOKIE = "snifftown_user_id";
 
+router.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("Pragma", "no-cache");
+  next();
+});
+
 type SupabaseUser = {
   id?: string;
   email?: string;

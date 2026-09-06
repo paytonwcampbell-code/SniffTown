@@ -3,7 +3,12 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSignIn, useSignUp, getGetCurrentUserQueryKey } from "@workspace/api-client-react";
+import {
+  useSignIn,
+  useSignUp,
+  getGetCurrentUserQueryKey,
+  getListDogsQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -48,7 +53,8 @@ export default function Auth() {
         if (data.requiresEmailVerification) {
           setVerificationSentTo(data.user.email);
         } else {
-          queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+          queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
+          queryClient.invalidateQueries({ queryKey: getListDogsQueryKey() });
           setLocation("/");
         }
       },
@@ -64,7 +70,8 @@ export default function Auth() {
         if (data.requiresEmailVerification) {
           setVerificationSentTo(data.user.email);
         } else {
-          queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
+          queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
+          queryClient.invalidateQueries({ queryKey: getListDogsQueryKey() });
           setLocation("/");
         }
       },

@@ -52,6 +52,7 @@ async function rpcRows(
 }
 
 router.get("/dogs", async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
   const parsed = ListDogsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid dog filters." });

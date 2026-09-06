@@ -29,12 +29,15 @@ import type {
   Dog,
   DogInput,
   HealthStatus,
+  IncomingPackRequest,
   ListDogsParams,
   Message,
   MessageInput,
   MessageStatus,
   Pack,
-  PackMembership,
+  PackRequest,
+  PackRequestResponse,
+  PackRequestResponseInput,
   Park,
   SendMessageResult
 } from './api.schemas';
@@ -299,6 +302,83 @@ export const useCreateDog = <TError = ErrorType<void>,
       return useMutation(getCreateDogMutationOptions(options));
     }
 
+export const getGetMyDogUrl = () => {
+
+
+
+
+  return `/api/dogs/mine`
+}
+
+/**
+ * @summary Get the signed-in member's primary dog
+ */
+export const getMyDog = async ( options?: Parameters<typeof customFetch>[1]): Promise<Dog> => {
+
+  return customFetch<Dog>(getGetMyDogUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyDogQueryKey = () => {
+    return [
+    `/api/dogs/mine`
+    ] as const;
+    }
+
+
+export const getGetMyDogQueryOptions = <TData = Awaited<ReturnType<typeof getMyDog>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyDogQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyDog>>> = ({ signal }) => getMyDog({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyDog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyDogQueryResult = NonNullable<Awaited<ReturnType<typeof getMyDog>>>
+export type GetMyDogQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get the signed-in member's primary dog
+ */
+
+export function useGetMyDog<TData = Awaited<ReturnType<typeof getMyDog>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyDogQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getAddDogToPackUrl = (dogId: string,) => {
 
 
@@ -308,11 +388,11 @@ export const getAddDogToPackUrl = (dogId: string,) => {
 }
 
 /**
- * @summary Add a nearby dog to the signed-in user's pack
+ * @summary Send a pack request to a nearby dog
  */
-export const addDogToPack = async (dogId: string, options?: Parameters<typeof customFetch>[1]): Promise<PackMembership> => {
+export const addDogToPack = async (dogId: string, options?: Parameters<typeof customFetch>[1]): Promise<PackRequest> => {
 
-  return customFetch<PackMembership>(getAddDogToPackUrl(dogId),
+  return customFetch<PackRequest>(getAddDogToPackUrl(dogId),
   {
     ...options,
     method: 'POST'
@@ -357,7 +437,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type AddDogToPackMutationError = ErrorType<void>
 
     /**
- * @summary Add a nearby dog to the signed-in user's pack
+ * @summary Send a pack request to a nearby dog
  */
 export const useAddDogToPack = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addDogToPack>>, TError,{dogId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -446,6 +526,155 @@ export function useListParks<TData = Awaited<ReturnType<typeof listParks>>, TErr
 
 
 
+
+export const getListIncomingPackRequestsUrl = () => {
+
+
+
+
+  return `/api/pack-requests/incoming`
+}
+
+/**
+ * @summary List pending pack requests for the signed-in member
+ */
+export const listIncomingPackRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<IncomingPackRequest[]> => {
+
+  return customFetch<IncomingPackRequest[]>(getListIncomingPackRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListIncomingPackRequestsQueryKey = () => {
+    return [
+    `/api/pack-requests/incoming`
+    ] as const;
+    }
+
+
+export const getListIncomingPackRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listIncomingPackRequests>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIncomingPackRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListIncomingPackRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIncomingPackRequests>>> = ({ signal }) => listIncomingPackRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listIncomingPackRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListIncomingPackRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listIncomingPackRequests>>>
+export type ListIncomingPackRequestsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List pending pack requests for the signed-in member
+ */
+
+export function useListIncomingPackRequests<TData = Awaited<ReturnType<typeof listIncomingPackRequests>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIncomingPackRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListIncomingPackRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRespondToPackRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/pack-requests/${requestId}/response`
+}
+
+/**
+ * @summary Accept or decline an incoming pack request
+ */
+export const respondToPackRequest = async (requestId: string,
+    packRequestResponseInput: PackRequestResponseInput, options?: Parameters<typeof customFetch>[1]): Promise<PackRequestResponse> => {
+
+  return customFetch<PackRequestResponse>(getRespondToPackRequestUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(packRequestResponseInput)
+  }
+);}
+
+
+
+
+
+export const getRespondToPackRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respondToPackRequest>>, TError,{requestId: string;data: BodyType<PackRequestResponseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof respondToPackRequest>>, TError,{requestId: string;data: BodyType<PackRequestResponseInput>}, TContext> => {
+
+const mutationKey = ['respondToPackRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof respondToPackRequest>>, {requestId: string;data: BodyType<PackRequestResponseInput>}> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  respondToPackRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RespondToPackRequestMutationResult = NonNullable<Awaited<ReturnType<typeof respondToPackRequest>>>
+    export type RespondToPackRequestMutationBody = BodyType<PackRequestResponseInput>
+    export type RespondToPackRequestMutationError = ErrorType<void>
+
+    /**
+ * @summary Accept or decline an incoming pack request
+ */
+export const useRespondToPackRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respondToPackRequest>>, TError,{requestId: string;data: BodyType<PackRequestResponseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof respondToPackRequest>>,
+        TError,
+        {requestId: string;data: BodyType<PackRequestResponseInput>},
+        TContext
+      > => {
+      return useMutation(getRespondToPackRequestMutationOptions(options));
+    }
 
 export const getListPacksUrl = () => {
 

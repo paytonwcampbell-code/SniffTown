@@ -31,8 +31,18 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
   const addDog = useAddDogToPack({
     mutation: {
       onSuccess: () => {
-        toast({ title: "Added to your pack!" });
+        toast({
+          title: "Pack request sent",
+          description: `${dog.name}'s owner can now accept your request.`,
+        });
         queryClient.invalidateQueries({ queryKey: getListDogsQueryKey() });
+      },
+      onError: (error) => {
+        toast({
+          title: "Couldn’t send the pack request",
+          description: error.message,
+          variant: "destructive",
+        });
       }
     }
   });
@@ -91,7 +101,7 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
                     disabled={dog.isInPack || addDog.isPending}
                     onClick={() => addDog.mutate({ dogId: dog.id })}
                   >
-                    {dog.isInPack ? "In Your Pack" : "+ Add to Pack"}
+                    {dog.isInPack ? "In Your Pack" : "+ Request Pack"}
                   </Button>
 
                   {dog.ownerId && (
@@ -106,6 +116,9 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
                       </Link>
                     </Button>
                   )}
+                  <Button variant="ghost" size="sm" asChild className="h-8 text-xs rounded-full">
+                    <Link href={`/dogs/${dog.id}`}>View profile</Link>
+                  </Button>
                 </div>
               ) : (
                 <Button variant="ghost" size="sm" asChild className="h-8 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 -ml-2">

@@ -66,7 +66,23 @@ export const CreateDogResponse = zod.object({
 
 
 /**
- * @summary Add a nearby dog to the signed-in user's pack
+ * @summary Get the signed-in member's primary dog
+ */
+export const GetMyDogResponse = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "name": zod.string(),
+  "ownerName": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "temperament": zod.array(zod.string()),
+  "parkId": zod.string().nullable(),
+  "isInPack": zod.boolean()
+})
+
+
+/**
+ * @summary Send a pack request to a nearby dog
  */
 export const AddDogToPackParams = zod.object({
   "dogId": zod.coerce.string()
@@ -75,7 +91,6 @@ export const AddDogToPackParams = zod.object({
 export const AddDogToPackResponse = zod.object({
   "id": zod.string(),
   "dogId": zod.string(),
-  "packId": zod.string(),
   "status": zod.string()
 })
 
@@ -92,6 +107,36 @@ export const ListParksResponseItem = zod.object({
   "packCount": zod.number()
 })
 export const ListParksResponse = zod.array(ListParksResponseItem)
+
+
+/**
+ * @summary List pending pack requests for the signed-in member
+ */
+export const ListIncomingPackRequestsResponseItem = zod.object({
+  "id": zod.string(),
+  "fromDogName": zod.string(),
+  "toDogName": zod.string(),
+  "message": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+export const ListIncomingPackRequestsResponse = zod.array(ListIncomingPackRequestsResponseItem)
+
+
+/**
+ * @summary Accept or decline an incoming pack request
+ */
+export const RespondToPackRequestParams = zod.object({
+  "requestId": zod.coerce.string()
+})
+
+export const RespondToPackRequestBody = zod.object({
+  "status": zod.enum(['accepted', 'declined'])
+})
+
+export const RespondToPackRequestResponse = zod.object({
+  "success": zod.boolean(),
+  "status": zod.enum(['accepted', 'declined'])
+})
 
 
 /**

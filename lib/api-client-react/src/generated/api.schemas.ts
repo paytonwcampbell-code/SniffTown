@@ -52,11 +52,44 @@ export interface Pack {
   isPublic: boolean;
 }
 
-export interface PackMembership {
+export interface PackRequest {
   id: string;
   dogId: string;
-  packId: string;
   status: string;
+}
+
+export interface IncomingPackRequest {
+  id: string;
+  fromDogName: string;
+  toDogName: string;
+  /** @nullable */
+  message: string | null;
+  createdAt: string;
+}
+
+export type PackRequestResponseInputStatus = typeof PackRequestResponseInputStatus[keyof typeof PackRequestResponseInputStatus];
+
+
+export const PackRequestResponseInputStatus = {
+  accepted: 'accepted',
+  declined: 'declined',
+} as const;
+
+export interface PackRequestResponseInput {
+  status: PackRequestResponseInputStatus;
+}
+
+export type PackRequestResponseStatus = typeof PackRequestResponseStatus[keyof typeof PackRequestResponseStatus];
+
+
+export const PackRequestResponseStatus = {
+  accepted: 'accepted',
+  declined: 'declined',
+} as const;
+
+export interface PackRequestResponse {
+  success: boolean;
+  status: PackRequestResponseStatus;
 }
 
 export interface AuthCredentials {

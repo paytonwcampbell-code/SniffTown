@@ -75,11 +75,27 @@ paths:
                 $ref: "#/components/schemas/Dog"
         "401":
           description: Authentication required
+  /dogs/mine:
+    get:
+      operationId: getMyDog
+      tags: [dogs]
+      summary: Get the signed-in member's primary dog
+      responses:
+        "200":
+          description: Primary dog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "401":
+          description: Authentication required
+        "404":
+          description: No dog profile found
   /dogs/{dogId}/pack:
     post:
       operationId: addDogToPack
       tags: [dogs]
-      summary: Add a nearby dog to the signed-in user's pack
+      summary: Send a pack request to a nearby dog
       parameters:
         - name: dogId
           in: path
@@ -88,11 +104,11 @@ paths:
             type: string
       responses:
         "201":
-          description: Pack membership created
+          description: Pack request created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PackMembership"
+                $ref: "#/components/schemas/PackRequest"
         "401":
           description: Authentication required
   /parks:
@@ -109,6 +125,48 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Park"
+  /pack-requests/incoming:
+    get:
+      operationId: listIncomingPackRequests
+      tags: [packs]
+      summary: List pending pack requests for the signed-in member
+      responses:
+        "200":
+          description: Pending incoming requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IncomingPackRequest"
+        "401":
+          description: Authentication required
+  /pack-requests/{requestId}/response:
+    post:
+      operationId: respondToPackRequest
+      tags: [packs]
+      summary: Accept or decline an incoming pack request
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PackRequestResponseInput"
+      responses:
+        "200":
+          description: Request updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackRequestResponse"
+        "401":
+          description: Authentication required
   /packs:
     get:
       operationId: listPacks
@@ -367,18 +425,46 @@ components:
         isPublic:
           type: boolean
       required: [id, name, location, memberCount, isPublic]
-    PackMembership:
+    PackRequest:
       type: object
       properties:
         id:
           type: string
         dogId:
           type: string
-        packId:
-          type: string
         status:
           type: string
-      required: [id, dogId, packId, status]
+      required: [id, dogId, status]
+    IncomingPackRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        fromDogName:
+          type: string
+        toDogName:
+          type: string
+        message:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, fromDogName, toDogName, message, createdAt]
+    PackRequestResponseInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [accepted, declined]
+      required: [status]
+    PackRequestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+          enum: [accepted, declined]
+      required: [success, status]
     AuthCredentials:
       type: object
       properties:

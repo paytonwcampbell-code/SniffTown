@@ -7,8 +7,12 @@ import {
   CreateDogResponse,
   ListDogsQueryParams,
   ListDogsResponse,
+  ListIncomingPackRequestsResponse,
   ListPacksResponse,
   ListParksResponse,
+  RespondToPackRequestBody,
+  RespondToPackRequestParams,
+  RespondToPackRequestResponse,
 } from "@workspace/api-zod";
 import {
   readProviderError,
@@ -177,6 +181,54 @@ router.post("/dogs", async (req, res) => {
   );
 });
 
+router.get("/dogs/mine", async (req, res) => {
+  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  if (!token) {
+    res.status(401).json({ error: "Sign in to view your dog." });
+    return;
+  }
+
+  const userResponse = await supabaseUserRequest("/auth/v1/user", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!userResponse.ok) {
+    res.status(401).json({ error: "Your session has expired." });
+    return;
+  }
+
+  const user = (await userResponse.json()) as {
+    id: string;
+    user_metadata?: { full_name?: string; name?: string };
+  };
+  const dogs = await jsonRows(
+    `/rest/v1/dogs?select=*&user_id=eq.${encodeURIComponent(user.id)}&order=updated_at.desc&limit=1`,
+    { Authorization: `Bearer ${token}` },
+  );
+  const dog = dogs[0];
+  if (!dog) {
+    res.status(404).json({ error: "Add your dog to get started." });
+    return;
+  }
+
+  res.json(
+    ListDogsResponse.element.parse({
+      id: String(dog.id),
+      ownerId: user.id,
+      name: String(dog.name ?? "My dog"),
+      ownerName:
+        user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+      description:
+        typeof dog.description === "string" ? dog.description : null,
+      photoUrl: typeof dog.photo_url === "string" ? dog.photo_url : null,
+      temperament: Array.isArray(dog.temperament)
+        ? dog.temperament.map(String)
+        : [],
+      parkId: null,
+      isInPack: false,
+    }),
+  );
+});
+
 router.post("/dogs/:dogId/pack", async (req, res) => {
   const params = AddDogToPackParams.safeParse(req.params);
   const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
@@ -197,39 +249,131 @@ router.post("/dogs/:dogId/pack", async (req, res) => {
     return;
   }
   const user = (await userResponse.json()) as { id: string };
-  const packs = await jsonRows(
-    "/rest/v1/packs?select=id&is_public=eq.true&order=created_at.asc&limit=1",
+  const myDogs = await jsonRows(
+    `/rest/v1/dogs?select=id&user_id=eq.${encodeURIComponent(user.id)}&order=updated_at.desc&limit=1`,
     { Authorization: `Bearer ${token}` },
   );
-  if (!packs[0]) {
-    res.status(409).json({ error: "No public pack is available yet." });
+  const myDog = myDogs[0];
+  if (!myDog) {
+    res.status(409).json({ error: "Add your own dog before sending a pack request." });
     return;
   }
 
-  const response = await supabaseUserRequest("/rest/v1/pack_members", {
+  const response = await supabaseUserRequest("/rest/v1/rpc/send_pack_request", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=representation",
     },
     body: JSON.stringify({
-      pack_id: packs[0].id,
-      user_id: user.id,
+      my_dog_id: myDog.id,
+      their_dog_id: params.data.dogId,
+      request_message: null,
     }),
   });
   if (!response.ok) {
     res.status(response.status).json({ error: await readProviderError(response) });
     return;
   }
-  const rows = (await response.json()) as RecordValue[];
-  const membership = rows[0] ?? {};
+  const requestResult = (await response.json()) as
+    | string
+    | RecordValue
+    | RecordValue[]
+    | null;
+  const requestRecord = Array.isArray(requestResult)
+    ? requestResult[0]
+    : typeof requestResult === "object" && requestResult
+      ? requestResult
+      : {};
   res.status(201).json(
     AddDogToPackResponse.parse({
-      id: String(membership.id ?? randomUUID()),
+      id: String(
+        typeof requestResult === "string"
+          ? requestResult
+          : requestRecord.id ?? requestRecord.request_id ?? randomUUID(),
+      ),
       dogId: params.data.dogId,
-      packId: String(packs[0].id),
-      status: "member",
+      status: "pending",
+    }),
+  );
+});
+
+router.get("/pack-requests/incoming", async (req, res) => {
+  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  if (!token) {
+    res.status(401).json({ error: "Sign in to view pack requests." });
+    return;
+  }
+
+  const response = await supabaseUserRequest(
+    "/rest/v1/rpc/get_incoming_pack_requests",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    },
+  );
+  if (!response.ok) {
+    res.status(response.status).json({ error: await readProviderError(response) });
+    return;
+  }
+
+  const rows = (await response.json()) as RecordValue[];
+  res.json(
+    ListIncomingPackRequestsResponse.parse(
+      rows.map((row) => ({
+        id: String(row.id),
+        fromDogName: String(row.from_dog_name ?? "A neighborhood dog"),
+        toDogName: String(row.to_dog_name ?? "your dog"),
+        message: typeof row.message === "string" ? row.message : null,
+        createdAt:
+          typeof row.created_at === "string"
+            ? row.created_at
+            : new Date().toISOString(),
+      })),
+    ),
+  );
+});
+
+router.post("/pack-requests/:requestId/response", async (req, res) => {
+  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const params = RespondToPackRequestParams.safeParse(req.params);
+  const body = RespondToPackRequestBody.safeParse(req.body);
+  if (!token) {
+    res.status(401).json({ error: "Sign in to respond to pack requests." });
+    return;
+  }
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Choose accept or decline." });
+    return;
+  }
+
+  const response = await supabaseUserRequest(
+    "/rest/v1/rpc/respond_to_pack_request",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        request_id: params.data.requestId,
+        new_status: body.data.status,
+      }),
+    },
+  );
+  if (!response.ok) {
+    res.status(response.status).json({ error: await readProviderError(response) });
+    return;
+  }
+
+  res.json(
+    RespondToPackRequestResponse.parse({
+      success: true,
+      status: body.data.status,
     }),
   );
 });

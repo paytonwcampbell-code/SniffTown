@@ -1,9 +1,15 @@
 import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { 
   useListDogs, 
   useListPacks,
   useGetCurrentUser,
+  useGetMyDog,
+  useListIncomingPackRequests,
+  useRespondToPackRequest,
+  getListDogsQueryKey,
+  getListIncomingPackRequestsQueryKey,
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
@@ -12,14 +18,42 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Users, Shield, MapPin, Bone, MessageSquare } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
 export default function PackPage() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: user, isLoading: isUserLoading } = useGetCurrentUser();
   const { data: allDogs, isLoading: isDogsLoading } = useListDogs();
   const { data: allPacks, isLoading: isPacksLoading } = useListPacks();
+  const { data: myDog } = useGetMyDog();
+  const { data: incomingRequests = [] } = useListIncomingPackRequests({
+    query: {
+      queryKey: getListIncomingPackRequestsQueryKey(),
+      refetchInterval: 5000,
+    },
+  });
+  const respondToRequest = useRespondToPackRequest({
+    mutation: {
+      onSuccess: (result) => {
+        toast({
+          title: result.status === "accepted" ? "Added to your pack" : "Request declined",
+        });
+        queryClient.invalidateQueries({ queryKey: getListDogsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListIncomingPackRequestsQueryKey() });
+      },
+      onError: (error) => {
+        toast({
+          title: "Couldn’t update the request",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    },
+  });
 
   // Filter out dogs that are in the user's pack
   const myPackDogs = useMemo(() => {
@@ -41,12 +75,16 @@ export default function PackPage() {
       <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between mb-12 pb-8 border-b border-border/40">
         <div className="flex items-center gap-5">
           <Avatar className="h-20 w-20 border-4 border-primary/20">
+            <AvatarImage src={myDog?.photoUrl || ""} alt={myDog?.name || "Your dog"} />
             <AvatarFallback className="bg-primary text-primary-foreground font-display text-2xl">
-              {getInitials(user.displayName || user.email || "U")}
+              {getInitials(myDog?.name || user.displayName || user.email || "U")}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">{user.displayName || "My Profile"}</h1>
+            <h1 className="font-display text-3xl font-bold tracking-tight">
+              {myDog?.name || "Your Dog"}
+              <span className="font-sans text-xl font-normal text-muted-foreground"> with {user.displayName || "you"}</span>
+            </h1>
             <p className="text-muted-foreground flex items-center gap-1.5 mt-1">
               <Shield className="h-4 w-4 text-primary" />
               Community Member
@@ -65,6 +103,52 @@ export default function PackPage() {
           </Button>
         </div>
       </div>
+
+      {incomingRequests.length > 0 && (
+        <Card className="mb-8 border-primary/25 bg-primary/[0.03]">
+          <CardContent className="p-5 sm:p-6">
+            <h2 className="font-display text-xl font-bold">Pack Requests</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Dogs who want to join your trusted circle.
+            </p>
+            <div className="mt-5 space-y-4">
+              {incomingRequests.map((request) => (
+                <div key={request.id} className="flex flex-col gap-3 rounded-xl border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold">
+                      {request.fromDogName} wants to join {request.toDogName}’s pack
+                    </p>
+                    {request.message && <p className="mt-1 text-sm text-muted-foreground">“{request.message}”</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={respondToRequest.isPending}
+                      onClick={() => respondToRequest.mutate({
+                        requestId: request.id,
+                        data: { status: "accepted" },
+                      })}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={respondToRequest.isPending}
+                      onClick={() => respondToRequest.mutate({
+                        requestId: request.id,
+                        data: { status: "declined" },
+                      })}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="mypack" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 mb-8 bg-secondary/50">
@@ -121,7 +205,9 @@ export default function PackPage() {
                   </div>
                   
                   <CardContent className="p-5">
-                    <h3 className="font-display font-bold text-xl mb-1">{dog.name}</h3>
+                    <Link href={`/dogs/${dog.id}`} className="hover:text-primary transition-colors">
+                      <h3 className="font-display font-bold text-xl mb-1">{dog.name}</h3>
+                    </Link>
                     {dog.ownerName && <p className="text-sm text-muted-foreground mb-3">with {dog.ownerName}</p>}
                     
                     {dog.temperament && dog.temperament.length > 0 && (
@@ -144,6 +230,9 @@ export default function PackPage() {
                       ) : (
                         <div />
                       )}
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/dogs/${dog.id}`}>View profile</Link>
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

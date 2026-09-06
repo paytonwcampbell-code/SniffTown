@@ -20,6 +20,8 @@ tags:
     description: Account access and session management
   - name: contact
     description: Contact messages
+  - name: messaging
+    description: Private member conversations
 paths:
   /healthz:
     get:
@@ -199,6 +201,92 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageStatus"
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [messaging]
+      summary: List the signed-in member's conversations
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationSummary"
+        "401":
+          description: Authentication required
+  /conversations/{conversationId}/messages:
+    get:
+      operationId: listMessages
+      tags: [messaging]
+      summary: List messages in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        "401":
+          description: Authentication required
+        "404":
+          description: Conversation not found
+  /messages:
+    post:
+      operationId: sendMessage
+      tags: [messaging]
+      summary: Send a private message to a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendMessageResult"
+        "400":
+          description: Invalid message
+        "401":
+          description: Authentication required
+  /conversations/{conversationId}/read:
+    post:
+      operationId: markConversationRead
+      tags: [messaging]
+      summary: Mark received messages in a conversation as read
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+      responses:
+        "200":
+          description: Conversation marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationReadResult"
+        "401":
+          description: Authentication required
+        "404":
+          description: Conversation not found
 components:
   schemas:
     HealthStatus:
@@ -212,6 +300,8 @@ components:
       type: object
       properties:
         id:
+          type: string
+        ownerId:
           type: string
         name:
           type: string
@@ -229,7 +319,7 @@ components:
           type: ["string", "null"]
         isInPack:
           type: boolean
-      required: [id, name, ownerName, description, photoUrl, temperament, parkId, isInPack]
+      required: [id, ownerId, name, ownerName, description, photoUrl, temperament, parkId, isInPack]
     DogInput:
       type: object
       properties:
@@ -339,4 +429,86 @@ components:
         message:
           type: string
       required: [accepted, message]
+    ConversationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        participant1Id:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        participant2Id:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        lastMessageAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        otherDogName:
+          type: ["string", "null"]
+        otherOwnerName:
+          type: ["string", "null"]
+        otherDogPhotoUrl:
+          type: ["string", "null"]
+        otherDogId:
+          type: ["string", "null"]
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        otherUserId:
+          type: ["string", "null"]
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        lastMessage:
+          type: ["string", "null"]
+        unreadCount:
+          type: number
+      required: [id, participant1Id, participant2Id, lastMessageAt, createdAt, otherDogName, otherOwnerName, otherDogPhotoUrl, otherDogId, otherUserId, lastMessage, unreadCount]
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        senderId:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        receiverId:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        content:
+          type: string
+        readAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, senderId, receiverId, content, readAt, createdAt]
+    MessageInput:
+      type: object
+      properties:
+        receiverId:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required: [receiverId, content]
+    SendMessageResult:
+      type: object
+      properties:
+        conversationId:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        message:
+          $ref: "#/components/schemas/Message"
+      required: [conversationId, message]
+    ConversationReadResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
 

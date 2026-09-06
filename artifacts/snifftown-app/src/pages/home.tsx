@@ -8,7 +8,8 @@ import {
   useAddDogToPack,
   useGetCurrentUser,
   useSendContactMessage,
-  getListDogsQueryKey
+  getListDogsQueryKey,
+  type Dog as DogType
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Users, Dog, ChevronRight, Heart, Shield, Coffee } from "lucide-react";
+import { MapPin, Users, Dog, ChevronRight, Heart, Shield, MessageSquare } from "lucide-react";
 
 // Helper for initials
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
-function DogCard({ dog, parkName, isUserLoggedIn }: { dog: any, parkName?: string, isUserLoggedIn: boolean }) {
+function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: string, isUserLoggedIn: boolean }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -82,15 +83,30 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: any, parkName?: strin
 
             <div className="mt-4 flex items-center justify-between">
               {isUserLoggedIn ? (
-                <Button 
-                  variant={dog.isInPack ? "secondary" : "outline"} 
-                  size="sm" 
-                  className="h-8 text-xs rounded-full"
-                  disabled={dog.isInPack || addDog.isPending}
-                  onClick={() => addDog.mutate({ dogId: dog.id })}
-                >
-                  {dog.isInPack ? "In Your Pack" : "+ Add to Pack"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={dog.isInPack ? "secondary" : "outline"}
+                    size="sm"
+                    className="h-8 text-xs rounded-full"
+                    disabled={dog.isInPack || addDog.isPending}
+                    onClick={() => addDog.mutate({ dogId: dog.id })}
+                  >
+                    {dog.isInPack ? "In Your Pack" : "+ Add to Pack"}
+                  </Button>
+
+                  {dog.ownerId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs rounded-full text-muted-foreground hover:text-primary"
+                      asChild
+                    >
+                      <Link href={`/messages?to=${dog.ownerId}&dog=${dog.id}`}>
+                        <MessageSquare className="h-3 w-3 mr-1.5" /> Message
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <Button variant="ghost" size="sm" asChild className="h-8 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 -ml-2">
                   <Link href="/auth">Sign in to interact <ChevronRight className="h-3 w-3 ml-1" /></Link>

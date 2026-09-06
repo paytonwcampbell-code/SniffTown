@@ -135,9 +135,15 @@ export default function PackPage() {
                     )}
                     
                     <div className="pt-4 mt-auto border-t border-border/40 flex justify-between items-center">
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary -ml-2">
-                        <MessageSquare className="h-4 w-4 mr-2" /> Message
-                      </Button>
+                      {dog.ownerId ? (
+                        <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-primary -ml-2">
+                          <Link href={`/messages?to=${dog.ownerId}&dog=${dog.id}`}>
+                            <MessageSquare className="h-4 w-4 mr-2" /> Message
+                          </Link>
+                        </Button>
+                      ) : (
+                        <div />
+                      )}
                     </div>
                   </CardContent>
                 </Card>

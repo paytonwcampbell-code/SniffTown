@@ -26,6 +26,7 @@ export const ListDogsQueryParams = zod.object({
 
 export const ListDogsResponseItem = zod.object({
   "id": zod.string(),
+  "ownerId": zod.string(),
   "name": zod.string(),
   "ownerName": zod.string().nullable(),
   "description": zod.string().nullable(),
@@ -53,6 +54,7 @@ export const CreateDogBody = zod.object({
 
 export const CreateDogResponse = zod.object({
   "id": zod.string(),
+  "ownerId": zod.string(),
   "name": zod.string(),
   "ownerName": zod.string().nullable(),
   "description": zod.string().nullable(),
@@ -184,6 +186,106 @@ export const SendContactMessageBody = zod.object({
 export const SendContactMessageResponse = zod.object({
   "accepted": zod.boolean(),
   "message": zod.string()
+})
+
+
+/**
+ * @summary List the signed-in member's conversations
+ */
+export const listConversationsResponseIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const listConversationsResponseParticipant1IdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const listConversationsResponseParticipant2IdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const listConversationsResponseOtherDogIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const listConversationsResponseOtherUserIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const ListConversationsResponseItem = zod.object({
+  "id": zod.string().regex(listConversationsResponseIdRegExp),
+  "participant1Id": zod.string().regex(listConversationsResponseParticipant1IdRegExp),
+  "participant2Id": zod.string().regex(listConversationsResponseParticipant2IdRegExp),
+  "lastMessageAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "otherDogName": zod.string().nullable(),
+  "otherOwnerName": zod.string().nullable(),
+  "otherDogPhotoUrl": zod.string().nullable(),
+  "otherDogId": zod.string().regex(listConversationsResponseOtherDogIdRegExp).nullable(),
+  "otherUserId": zod.string().regex(listConversationsResponseOtherUserIdRegExp).nullable(),
+  "lastMessage": zod.string().nullable(),
+  "unreadCount": zod.number()
+})
+export const ListConversationsResponse = zod.array(ListConversationsResponseItem)
+
+
+/**
+ * @summary List messages in a conversation
+ */
+export const listMessagesPathConversationIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const ListMessagesParams = zod.object({
+  "conversationId": zod.coerce.string().regex(listMessagesPathConversationIdRegExp)
+})
+
+export const listMessagesResponseIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const listMessagesResponseSenderIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const listMessagesResponseReceiverIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const ListMessagesResponseItem = zod.object({
+  "id": zod.string().regex(listMessagesResponseIdRegExp),
+  "senderId": zod.string().regex(listMessagesResponseSenderIdRegExp),
+  "receiverId": zod.string().regex(listMessagesResponseReceiverIdRegExp),
+  "content": zod.string(),
+  "readAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMessagesResponse = zod.array(ListMessagesResponseItem)
+
+
+/**
+ * @summary Send a private message to a member
+ */
+export const sendMessageBodyReceiverIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const sendMessageBodyContentMax = 2000;
+
+
+
+export const SendMessageBody = zod.object({
+  "receiverId": zod.string().regex(sendMessageBodyReceiverIdRegExp),
+  "content": zod.string().min(1).max(sendMessageBodyContentMax)
+})
+
+export const sendMessageResponseConversationIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const sendMessageResponseMessageIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const sendMessageResponseMessageSenderIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+export const sendMessageResponseMessageReceiverIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const SendMessageResponse = zod.object({
+  "conversationId": zod.string().regex(sendMessageResponseConversationIdRegExp),
+  "message": zod.object({
+  "id": zod.string().regex(sendMessageResponseMessageIdRegExp),
+  "senderId": zod.string().regex(sendMessageResponseMessageSenderIdRegExp),
+  "receiverId": zod.string().regex(sendMessageResponseMessageReceiverIdRegExp),
+  "content": zod.string(),
+  "readAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Mark received messages in a conversation as read
+ */
+export const markConversationReadPathConversationIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const MarkConversationReadParams = zod.object({
+  "conversationId": zod.coerce.string().regex(markConversationReadPathConversationIdRegExp)
+})
+
+export const MarkConversationReadResponse = zod.object({
+  "success": zod.boolean()
 })
 
 

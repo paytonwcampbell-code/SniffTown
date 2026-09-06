@@ -8,6 +8,7 @@
 
 export interface Dog {
   id: string;
+  ownerId: string;
   name: string;
   /** @nullable */
   ownerName: string | null;

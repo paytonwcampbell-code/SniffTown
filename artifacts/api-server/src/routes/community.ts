@@ -91,6 +91,7 @@ router.get("/dogs", async (req, res) => {
 
     const result = dogs.map((dog) => ({
       id: String(dog.id),
+      ownerId: String(dog.user_id),
       name: String(dog.name ?? "Neighborhood dog"),
       ownerName:
         (typeof dog.owner_name === "string" ? dog.owner_name : null) ??
@@ -158,6 +159,7 @@ router.post("/dogs", async (req, res) => {
   res.status(201).json(
     CreateDogResponse.parse({
       id: String(dog.id),
+      ownerId: user.id,
       name: String(dog.name),
       ownerName: null,
       description:

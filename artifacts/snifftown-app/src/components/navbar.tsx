@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, User, Users } from "lucide-react";
+import { LogOut, User, Users, MessageSquare } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function Navbar() {
@@ -49,6 +49,9 @@ export function Navbar() {
               <Link href="/pack" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/pack' ? 'text-primary' : 'text-muted-foreground'}`}>
                 My Pack
               </Link>
+              <Link href="/messages" className={`text-sm font-medium transition-colors hover:text-primary ${location.startsWith('/messages') ? 'text-primary' : 'text-muted-foreground'}`}>
+                Inbox
+              </Link>
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -70,6 +73,12 @@ export function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/messages" className="flex w-full cursor-pointer items-center">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      <span>Inbox</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/pack" className="flex w-full cursor-pointer items-center">
                       <Users className="mr-2 h-4 w-4" />

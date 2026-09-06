@@ -11,6 +11,7 @@ export interface HealthStatus {
 
 export interface Dog {
   id: string;
+  ownerId: string;
   name: string;
   /** @nullable */
   ownerName: string | null;
@@ -93,6 +94,70 @@ export interface ContactMessage {
 export interface MessageStatus {
   accepted: boolean;
   message: string;
+}
+
+export interface ConversationSummary {
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  participant1Id: string;
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  participant2Id: string;
+  /** @nullable */
+  lastMessageAt: string | null;
+  createdAt: string;
+  /** @nullable */
+  otherDogName: string | null;
+  /** @nullable */
+  otherOwnerName: string | null;
+  /** @nullable */
+  otherDogPhotoUrl: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+     */
+  otherDogId: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+     */
+  otherUserId: string | null;
+  /** @nullable */
+  lastMessage: string | null;
+  unreadCount: number;
+}
+
+export interface Message {
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  senderId: string;
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  receiverId: string;
+  content: string;
+  /** @nullable */
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface MessageInput {
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  receiverId: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  content: string;
+}
+
+export interface SendMessageResult {
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  conversationId: string;
+  message: Message;
+}
+
+export interface ConversationReadResult {
+  success: boolean;
 }
 
 export type ListDogsParams = {

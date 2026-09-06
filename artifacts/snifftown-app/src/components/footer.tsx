@@ -15,7 +15,7 @@ export function Footer() {
               <span className="font-display text-lg font-bold tracking-tight">SniffTown</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              The neighborhood dog community. Find playdates, build trusted packs, and trade pet-sitting help.
+              Austin's neighborhood dog community. Find playdates, build trusted packs, and trade pet-sitting help.
             </p>
           </div>
           
@@ -36,7 +36,7 @@ export function Footer() {
           <div className="flex flex-col gap-3">
             <h3 className="font-display font-semibold text-foreground">Contact</h3>
             <a href="mailto:hello@snifftown.com" className="text-sm text-muted-foreground hover:text-primary transition-colors">hello@snifftown.com</a>
-            <p className="text-sm text-muted-foreground">Made with care for local communities.</p>
+            <p className="text-sm text-muted-foreground">Made with care in Austin, Texas.</p>
           </div>
         </div>
         

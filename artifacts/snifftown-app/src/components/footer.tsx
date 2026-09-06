@@ -15,7 +15,7 @@ export function Footer() {
               <span className="font-display text-lg font-bold tracking-tight">SniffTown</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              The neighborhood dog community. Find walking buddies, share local park updates, and build your pack.
+              The neighborhood dog community. Find playdates, build trusted packs, and trade pet-sitting help.
             </p>
           </div>
           

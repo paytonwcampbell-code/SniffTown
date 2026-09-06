@@ -154,7 +154,7 @@ export default function Home() {
             Find the right <span className="text-primary italic">friends</span> for your best friend.
           </h1>
           <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            SniffTown connects local dogs and their owners. Find walking buddies with matching temperaments, check who's at the park, and build your pack.
+            SniffTown connects local dogs and their owners. Find compatible playdates and walking buddies, build a trusted pack, and trade pet-sitting help with neighbors who already know your dog.
           </p>
           
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -182,7 +182,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-10">
             <div className="max-w-xl">
               <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight">See who's sniffin' around</h2>
-              <p className="mt-3 text-muted-foreground text-lg">Meet dogs in your neighborhood looking for walking buddies.</p>
+              <p className="mt-3 text-muted-foreground text-lg">Meet neighborhood dogs looking for playdates and walking buddies.</p>
             </div>
             {isUserLoggedIn && (
               <Button asChild variant="outline" className="rounded-full">
@@ -231,16 +231,16 @@ export default function Home() {
               </div>
               <h3 className="font-display text-2xl font-bold mb-3 text-white">Match Temperaments</h3>
               <p className="text-primary-foreground/80 leading-relaxed max-w-xs">
-                Find dogs that match your pup's energy level. Shy dogs find calm buddies, energetic dogs find running partners.
+                Find playdates that fit your pup's energy level. Shy dogs meet calm buddies, while energetic dogs find playful partners.
               </p>
             </div>
             <div className="flex flex-col items-center">
               <div className="h-16 w-16 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
                 <Users className="h-8 w-8 text-white" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-3 text-white">Build Your Pack</h3>
+              <h3 className="font-display text-2xl font-bold mb-3 text-white">Share the Care</h3>
               <p className="text-primary-foreground/80 leading-relaxed max-w-xs">
-                Curate a list of dogs your dog loves to hang out with. Coordinate park visits with familiar faces.
+                Build a trusted circle of familiar dogs and neighbors who can trade walks, check-ins, and pet-sitting duties.
               </p>
             </div>
             <div className="flex flex-col items-center">
@@ -249,7 +249,7 @@ export default function Home() {
               </div>
               <h3 className="font-display text-2xl font-bold mb-3 text-white">Local & Trustworthy</h3>
               <p className="text-primary-foreground/80 leading-relaxed max-w-xs">
-                A community built for actual neighborhoods. No algorithm, just the real dogs walking on your street.
+                Grow trust through real neighborhood connections, repeat playdates, and people who understand your dog's routine.
               </p>
             </div>
           </div>

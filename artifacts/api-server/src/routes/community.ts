@@ -255,8 +255,58 @@ router.post("/dogs/:dogId/pack", async (req, res) => {
   );
   const myDog = myDogs[0];
   if (!myDog) {
-    res.status(409).json({ error: "Add your own dog before sending a pack request." });
+    res.status(409).json({ error: "Add your own dog before expressing interest." });
     return;
+  }
+
+  const incomingResponse = await supabaseUserRequest(
+    "/rest/v1/rpc/get_incoming_pack_requests",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    },
+  );
+  if (incomingResponse.ok) {
+    const incoming = (await incomingResponse.json()) as RecordValue[];
+    const reciprocal = incoming.find(
+      (request) =>
+        String(request.from_dog_id ?? "") === params.data.dogId &&
+        String(request.status ?? "pending") === "pending",
+    );
+    if (reciprocal?.id) {
+      const matchResponse = await supabaseUserRequest(
+        "/rest/v1/rpc/respond_to_pack_request",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            request_id: reciprocal.id,
+            new_status: "accepted",
+          }),
+        },
+      );
+      if (!matchResponse.ok) {
+        res.status(matchResponse.status).json({
+          error: await readProviderError(matchResponse),
+        });
+        return;
+      }
+      res.status(201).json(
+        AddDogToPackResponse.parse({
+          id: String(reciprocal.id),
+          dogId: params.data.dogId,
+          status: "matched",
+        }),
+      );
+      return;
+    }
   }
 
   const response = await supabaseUserRequest("/rest/v1/rpc/send_pack_request", {
@@ -301,7 +351,7 @@ router.post("/dogs/:dogId/pack", async (req, res) => {
 router.get("/pack-requests/incoming", async (req, res) => {
   const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
   if (!token) {
-    res.status(401).json({ error: "Sign in to view pack requests." });
+    res.status(401).json({ error: "Sign in to view match interests." });
     return;
   }
 
@@ -343,7 +393,7 @@ router.post("/pack-requests/:requestId/response", async (req, res) => {
   const params = RespondToPackRequestParams.safeParse(req.params);
   const body = RespondToPackRequestBody.safeParse(req.body);
   if (!token) {
-    res.status(401).json({ error: "Sign in to respond to pack requests." });
+    res.status(401).json({ error: "Sign in to respond to match interests." });
     return;
   }
   if (!params.success || !body.success) {

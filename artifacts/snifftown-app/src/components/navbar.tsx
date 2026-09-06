@@ -47,10 +47,10 @@ export function Navbar() {
           {user?.id ? (
             <>
               <Link href="/pack" className={`hidden text-sm font-medium transition-colors hover:text-primary md:inline-flex ${location === '/pack' ? 'text-primary' : 'text-muted-foreground'}`}>
-                My Pack
+                Matches
               </Link>
               <Button asChild variant="ghost" size="icon" className="md:hidden">
-                <Link href="/pack" aria-label="My Pack">
+                <Link href="/pack" aria-label="Matches">
                   <Users className="h-5 w-5" />
                 </Link>
               </Button>
@@ -92,7 +92,7 @@ export function Navbar() {
                   <DropdownMenuItem asChild>
                     <Link href="/pack" className="flex w-full cursor-pointer items-center">
                       <Users className="mr-2 h-4 w-4" />
-                      <span>My Pack</span>
+                      <span>Matches</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -119,7 +119,7 @@ export function Navbar() {
                 <Link href="/auth">Sign In</Link>
               </Button>
               <Button asChild className="rounded-full shadow-sm hover:shadow-md transition-all">
-                <Link href="/auth">Join Pack</Link>
+                <Link href="/auth">Join Community</Link>
               </Button>
             </div>
           )}

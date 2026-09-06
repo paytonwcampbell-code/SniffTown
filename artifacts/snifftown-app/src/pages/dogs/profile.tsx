@@ -71,7 +71,7 @@ export default function DogProfile() {
                 </div>
               )}
 
-              {dog.ownerId && dog.ownerId !== user.id && (
+              {dog.ownerId && dog.ownerId !== user.id && dog.isInPack && (
                 <Button asChild className="mt-7 rounded-full">
                   <Link href={`/messages?to=${dog.ownerId}&dog=${dog.id}`}>
                     <MessageSquare className="mr-2 h-4 w-4" />Message about {dog.name}

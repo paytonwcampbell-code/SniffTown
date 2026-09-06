@@ -40,7 +40,7 @@ export default function PackPage() {
     mutation: {
       onSuccess: (result) => {
         toast({
-          title: result.status === "accepted" ? "Added to your pack" : "Request declined",
+          title: result.status === "accepted" ? "It’s a match!" : "Interest dismissed",
         });
         queryClient.invalidateQueries({ queryKey: getListDogsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getListIncomingPackRequestsQueryKey() });
@@ -81,13 +81,11 @@ export default function PackPage() {
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">
-              {myDog?.name || "Your Dog"}
-              <span className="font-sans text-xl font-normal text-muted-foreground"> with {user.displayName || "you"}</span>
-            </h1>
+            <h1 className="font-display text-3xl font-bold tracking-tight">{myDog?.name || "Your Dog"}</h1>
+            <p className="mt-1 text-lg text-muted-foreground">with {user.displayName || "you"}</p>
             <p className="text-muted-foreground flex items-center gap-1.5 mt-1">
               <Shield className="h-4 w-4 text-primary" />
-              Community Member
+              SniffTown Community Member
             </p>
           </div>
         </div>
@@ -107,16 +105,16 @@ export default function PackPage() {
       {incomingRequests.length > 0 && (
         <Card className="mb-8 border-primary/25 bg-primary/[0.03]">
           <CardContent className="p-5 sm:p-6">
-            <h2 className="font-display text-xl font-bold">Pack Requests</h2>
+            <h2 className="font-display text-xl font-bold">Dogs interested in {myDog?.name || "yours"}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Dogs who want to join your trusted circle.
+              Interest stays private unless you’re interested too.
             </p>
             <div className="mt-5 space-y-4">
               {incomingRequests.map((request) => (
                 <div key={request.id} className="flex flex-col gap-3 rounded-xl border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold">
-                      {request.fromDogName} wants to join {request.toDogName}’s pack
+                      {request.fromDogName} is interested in meeting {request.toDogName}
                     </p>
                     {request.message && <p className="mt-1 text-sm text-muted-foreground">“{request.message}”</p>}
                   </div>
@@ -129,7 +127,7 @@ export default function PackPage() {
                         data: { status: "accepted" },
                       })}
                     >
-                      Accept
+                      Interested too
                     </Button>
                     <Button
                       size="sm"
@@ -140,7 +138,7 @@ export default function PackPage() {
                         data: { status: "declined" },
                       })}
                     >
-                      Decline
+                      Not now
                     </Button>
                   </div>
                 </div>
@@ -152,16 +150,16 @@ export default function PackPage() {
 
       <Tabs defaultValue="mypack" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 mb-8 bg-secondary/50">
-          <TabsTrigger value="mypack" className="data-[state=active]:bg-background">My Pack</TabsTrigger>
-          <TabsTrigger value="publicpacks" className="data-[state=active]:bg-background">Public Packs</TabsTrigger>
+          <TabsTrigger value="mypack" className="data-[state=active]:bg-background">My Matches</TabsTrigger>
+          <TabsTrigger value="publicpacks" className="data-[state=active]:bg-background">Community Packs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="mypack" className="space-y-8 animate-in fade-in-50 duration-500">
           
           <div className="flex justify-between items-end mb-6">
             <div>
-              <h2 className="font-display text-2xl font-bold">Your Pack Members</h2>
-              <p className="text-muted-foreground mt-1">Dogs you've connected with in the neighborhood.</p>
+              <h2 className="font-display text-2xl font-bold">Your Matches</h2>
+              <p className="text-muted-foreground mt-1">Mutual dog connections from around the neighborhood.</p>
             </div>
             <Badge variant="secondary" className="text-sm font-normal hidden sm:inline-flex">
               {myPackDogs.length} Member{myPackDogs.length !== 1 ? 's' : ''}
@@ -177,9 +175,9 @@ export default function PackPage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-secondary-foreground mb-4">
                 <Users className="h-8 w-8 opacity-50" />
               </div>
-              <h3 className="font-display text-xl font-bold mb-2">Your pack is empty</h3>
+              <h3 className="font-display text-xl font-bold mb-2">No matches yet</h3>
               <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                You haven't added any dogs to your pack yet. Explore the neighborhood to find walking buddies!
+                Express interest in nearby dogs. When their person is interested too, they’ll appear here.
               </p>
               <Button asChild>
                 <Link href="/">Explore Nearby Dogs</Link>
@@ -199,7 +197,7 @@ export default function PackPage() {
                     )}
                     <div className="absolute top-3 right-3">
                       <Badge className="bg-primary/90 text-primary-foreground backdrop-blur-sm border-none shadow-sm">
-                        In Pack
+                        Match
                       </Badge>
                     </div>
                   </div>

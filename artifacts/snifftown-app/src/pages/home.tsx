@@ -30,16 +30,19 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
   
   const addDog = useAddDogToPack({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (result) => {
         toast({
-          title: "Pack request sent",
-          description: `${dog.name}'s owner can now accept your request.`,
+          title: result.status === "matched" ? `You matched with ${dog.name}!` : "Interest sent",
+          description:
+            result.status === "matched"
+              ? `You can now message ${dog.name}'s person.`
+              : `${dog.name}'s person can respond privately.`,
         });
         queryClient.invalidateQueries({ queryKey: getListDogsQueryKey() });
       },
       onError: (error) => {
         toast({
-          title: "Couldn’t send the pack request",
+          title: "Couldn’t express interest",
           description: error.message,
           variant: "destructive",
         });
@@ -101,10 +104,10 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
                     disabled={dog.isInPack || addDog.isPending}
                     onClick={() => addDog.mutate({ dogId: dog.id })}
                   >
-                    {dog.isInPack ? "In Your Pack" : "+ Request Pack"}
+                    {dog.isInPack ? "Matched" : "Interested"}
                   </Button>
 
-                  {dog.ownerId && (
+                  {dog.ownerId && dog.isInPack && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -198,7 +201,7 @@ export default function Home() {
               </>
             ) : (
               <Button size="lg" asChild className="h-12 px-8 text-base rounded-full w-full sm:w-auto shadow-md hover:shadow-lg transition-all">
-                <Link href="/pack">View Your Pack</Link>
+                <Link href="/pack">View Your Matches</Link>
               </Button>
             )}
           </div>

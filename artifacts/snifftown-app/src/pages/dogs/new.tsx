@@ -131,7 +131,7 @@ export default function NewDog() {
     <div className="container mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
         <Button variant="ghost" size="sm" asChild className="mb-4 -ml-3 text-muted-foreground hover:text-foreground">
-          <Link href="/pack"><ArrowLeft className="mr-2 h-4 w-4" /> Back to My Pack</Link>
+          <Link href="/pack"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Matches</Link>
         </Button>
         <h1 className="font-display text-3xl font-bold tracking-tight">Add Your Dog</h1>
         <p className="text-muted-foreground mt-2">Create a profile so neighbors can recognize your furry friend.</p>

@@ -1,1 +1,2 @@
 - [Supabase user sessions](supabase-user-sessions.md) — RLS member requests must use direct Supabase access; the connector rejects forwarded user bearer tokens.
+- [Incognito preview sessions](incognito-preview-sessions.md) — private Replit preview embeds may lose HTTP-only auth cookies in Chrome Incognito; use a top-level or published URL.

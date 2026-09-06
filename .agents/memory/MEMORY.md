@@ -1,0 +1,1 @@
+- [Supabase user sessions](supabase-user-sessions.md) — RLS member requests must use direct Supabase access; the connector rejects forwarded user bearer tokens.

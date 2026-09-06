@@ -124,23 +124,6 @@ router.post("/auth/signin", async (req, res) => {
   }
 
   const auth = (await response.json()) as SupabaseAuthResult;
-  let immediateSessionStatus: number | null = null;
-  if (auth.access_token) {
-    const sessionCheck = await supabaseUserRequest("/auth/v1/user", {
-      headers: { Authorization: `Bearer ${auth.access_token}` },
-    });
-    immediateSessionStatus = sessionCheck.status;
-  }
-  req.log.info(
-    {
-      hasAccessToken: Boolean(auth.access_token),
-      accessTokenLength: auth.access_token?.length ?? 0,
-      hasRefreshToken: Boolean(auth.refresh_token),
-      hasUserId: Boolean(auth.user?.id),
-      immediateSessionStatus,
-    },
-    "Supabase sign-in session received",
-  );
   setSessionCookies(res, auth);
   res.json(
     SignInResponse.parse({
@@ -181,14 +164,6 @@ router.get("/auth/me", async (req, res) => {
   const response = await supabaseUserRequest("/auth/v1/user", {
     headers: { Authorization: `Bearer ${token}` },
   });
-  req.log.info(
-    {
-      hasSessionCookie: true,
-      sessionCookieLength: token.length,
-      providerStatus: response.status,
-    },
-    "Supabase current-user check completed",
-  );
 
   if (!response.ok) {
     res.clearCookie(ACCESS_COOKIE, { path: "/" });
@@ -205,10 +180,6 @@ router.get("/auth/me", async (req, res) => {
   }
 
   const user = (await response.json()) as SupabaseUser;
-  req.log.info(
-    { hasUserId: Boolean(user.id) },
-    "Supabase current-user response received",
-  );
   res.json(
     GetCurrentUserResponse.parse(
       toCurrentUser(user),

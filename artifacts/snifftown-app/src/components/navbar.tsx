@@ -39,19 +39,29 @@ export function Navbar() {
           <span className="font-display text-xl font-bold tracking-tight text-foreground">SniffTown</span>
         </Link>
 
-        <nav className="flex items-center gap-4 sm:gap-6">
+        <nav className="flex items-center gap-2 sm:gap-4 md:gap-6">
           <Link href="/" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/' ? 'text-primary' : 'text-muted-foreground'}`}>
             Explore
           </Link>
           
           {user?.id ? (
             <>
-              <Link href="/pack" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/pack' ? 'text-primary' : 'text-muted-foreground'}`}>
+              <Link href="/pack" className={`hidden text-sm font-medium transition-colors hover:text-primary md:inline-flex ${location === '/pack' ? 'text-primary' : 'text-muted-foreground'}`}>
                 My Pack
               </Link>
-              <Link href="/messages" className={`text-sm font-medium transition-colors hover:text-primary ${location.startsWith('/messages') ? 'text-primary' : 'text-muted-foreground'}`}>
+              <Button asChild variant="ghost" size="icon" className="md:hidden">
+                <Link href="/pack" aria-label="My Pack">
+                  <Users className="h-5 w-5" />
+                </Link>
+              </Button>
+              <Link href="/messages" className={`hidden text-sm font-medium transition-colors hover:text-primary md:inline-flex ${location.startsWith('/messages') ? 'text-primary' : 'text-muted-foreground'}`}>
                 Inbox
               </Link>
+              <Button asChild variant="ghost" size="icon" className="md:hidden">
+                <Link href="/messages" aria-label="Inbox">
+                  <MessageSquare className="h-5 w-5" />
+                </Link>
+              </Button>
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -67,10 +67,13 @@ router.get("/dogs", async (req, res) => {
 
   try {
     const authHeaders = bearer(req);
-    const [dogs, profiles, memberships] = await Promise.all([
+    const [dogs, profiles, familiarRows] = await Promise.all([
       rpcRows("get_dogs_for_matching", authHeaders),
       jsonRows("/rest/v1/profiles?select=id,full_name", authHeaders),
-      jsonRows("/rest/v1/pack_members?select=id,pack_id,user_id,joined_at", authHeaders),
+      jsonRows(
+        "/rest/v1/dog_familiars?select=marked_dog_id",
+        authHeaders,
+      ),
     ]);
 
     const profileNames = new Map(
@@ -83,10 +86,10 @@ router.get("/dogs", async (req, res) => {
       typeof req.cookies?.snifftown_user_id === "string"
         ? req.cookies.snifftown_user_id
         : null;
-    const userIsInPack = new Set(
-      memberships
-        .filter((member) => member.user_id === currentUserId)
-        .map((member) => String(member.pack_id)),
+    const familiarDogIds = new Set(
+      currentUserId
+        ? familiarRows.map((row) => String(row.marked_dog_id))
+        : [],
     );
 
     const result = dogs.map((dog) => ({
@@ -105,7 +108,7 @@ router.get("/dogs", async (req, res) => {
         ? dog.temperament.map(String)
         : [],
       parkId: null,
-      isInPack: userIsInPack.size > 0,
+      isInPack: familiarDogIds.has(String(dog.id)),
     }));
     res.json(ListDogsResponse.parse(result));
   } catch (error) {

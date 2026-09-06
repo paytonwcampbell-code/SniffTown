@@ -10,7 +10,11 @@ import {
   ListPacksResponse,
   ListParksResponse,
 } from "@workspace/api-zod";
-import { readProviderError, supabaseRequest } from "../lib/connectors";
+import {
+  readProviderError,
+  supabaseRequest,
+  supabaseUserRequest,
+} from "../lib/connectors";
 
 const router: IRouter = Router();
 const ACCESS_COOKIE = "snifftown_access";
@@ -26,7 +30,8 @@ async function jsonRows(
   path: string,
   headers: Record<string, string> = {},
 ): Promise<RecordValue[]> {
-  const response = await supabaseRequest(path, { headers });
+  const request = headers.Authorization ? supabaseUserRequest : supabaseRequest;
+  const response = await request(path, { headers });
   if (!response.ok) {
     throw new Error(await readProviderError(response));
   }
@@ -37,7 +42,8 @@ async function rpcRows(
   functionName: string,
   headers: Record<string, string> = {},
 ): Promise<RecordValue[]> {
-  const response = await supabaseRequest(`/rest/v1/rpc/${functionName}`, {
+  const request = headers.Authorization ? supabaseUserRequest : supabaseRequest;
+  const response = await request(`/rest/v1/rpc/${functionName}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -119,7 +125,7 @@ router.post("/dogs", async (req, res) => {
     return;
   }
 
-  const userResponse = await supabaseRequest("/auth/v1/user", {
+  const userResponse = await supabaseUserRequest("/auth/v1/user", {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!userResponse.ok) {
@@ -134,7 +140,7 @@ router.post("/dogs", async (req, res) => {
     photo_url: parsed.data.photoUrl ?? null,
     temperament: parsed.data.temperament ?? [],
   };
-  const response = await supabaseRequest("/rest/v1/dogs", {
+  const response = await supabaseUserRequest("/rest/v1/dogs", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -178,7 +184,7 @@ router.post("/dogs/:dogId/pack", async (req, res) => {
     return;
   }
 
-  const userResponse = await supabaseRequest("/auth/v1/user", {
+  const userResponse = await supabaseUserRequest("/auth/v1/user", {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!userResponse.ok) {
@@ -195,7 +201,7 @@ router.post("/dogs/:dogId/pack", async (req, res) => {
     return;
   }
 
-  const response = await supabaseRequest("/rest/v1/pack_members", {
+  const response = await supabaseUserRequest("/rest/v1/pack_members", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

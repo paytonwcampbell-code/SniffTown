@@ -6,7 +6,11 @@ import {
   SignUpBody,
   SignUpResponse,
 } from "@workspace/api-zod";
-import { readProviderError, supabaseRequest } from "../lib/connectors";
+import {
+  readProviderError,
+  supabaseRequest,
+  supabaseUserRequest,
+} from "../lib/connectors";
 
 const router: IRouter = Router();
 const ACCESS_COOKIE = "snifftown_access";
@@ -122,7 +126,7 @@ router.post("/auth/signin", async (req, res) => {
   const auth = (await response.json()) as SupabaseAuthResult;
   let immediateSessionStatus: number | null = null;
   if (auth.access_token) {
-    const sessionCheck = await supabaseRequest("/auth/v1/user", {
+    const sessionCheck = await supabaseUserRequest("/auth/v1/user", {
       headers: { Authorization: `Bearer ${auth.access_token}` },
     });
     immediateSessionStatus = sessionCheck.status;
@@ -150,7 +154,7 @@ router.post("/auth/signin", async (req, res) => {
 router.post("/auth/signout", async (req, res) => {
   const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
   if (token) {
-    await supabaseRequest("/auth/v1/logout", {
+    await supabaseUserRequest("/auth/v1/logout", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -174,7 +178,7 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
-  const response = await supabaseRequest("/auth/v1/user", {
+  const response = await supabaseUserRequest("/auth/v1/user", {
     headers: { Authorization: `Bearer ${token}` },
   });
   req.log.info(

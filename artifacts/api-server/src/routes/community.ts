@@ -33,6 +33,24 @@ async function jsonRows(
   return (await response.json()) as RecordValue[];
 }
 
+async function rpcRows(
+  functionName: string,
+  headers: Record<string, string> = {},
+): Promise<RecordValue[]> {
+  const response = await supabaseRequest(`/rest/v1/rpc/${functionName}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    body: "{}",
+  });
+  if (!response.ok) {
+    throw new Error(await readProviderError(response));
+  }
+  return (await response.json()) as RecordValue[];
+}
+
 router.get("/dogs", async (req, res) => {
   const parsed = ListDogsQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -43,7 +61,7 @@ router.get("/dogs", async (req, res) => {
   try {
     const authHeaders = bearer(req);
     const [dogs, profiles, memberships] = await Promise.all([
-      jsonRows("/rest/v1/dogs?select=*&order=created_at.desc&limit=50", authHeaders),
+      rpcRows("get_dogs_for_matching", authHeaders),
       jsonRows("/rest/v1/profiles?select=id,full_name", authHeaders),
       jsonRows("/rest/v1/pack_members?select=id,pack_id,user_id,joined_at", authHeaders),
     ]);
@@ -67,7 +85,11 @@ router.get("/dogs", async (req, res) => {
     const result = dogs.map((dog) => ({
       id: String(dog.id),
       name: String(dog.name ?? "Neighborhood dog"),
-      ownerName: profileNames.get(String(dog.user_id)) ?? null,
+      ownerName:
+        (typeof dog.owner_name === "string" ? dog.owner_name : null) ??
+        (typeof dog.owner_full_name === "string" ? dog.owner_full_name : null) ??
+        profileNames.get(String(dog.user_id)) ??
+        null,
       description:
         typeof dog.description === "string" ? dog.description : null,
       photoUrl: typeof dog.photo_url === "string" ? dog.photo_url : null,

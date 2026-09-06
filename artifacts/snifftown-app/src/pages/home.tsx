@@ -200,8 +200,19 @@ export default function Home() {
           ) : dogs?.length === 0 ? (
             <div className="text-center py-16 px-4 border border-dashed rounded-2xl bg-background">
               <Dog className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium">No dogs here yet</h3>
-              <p className="text-muted-foreground mt-1 max-w-md mx-auto">Be the first to add your dog to this neighborhood and start the pack!</p>
+              <h3 className="text-lg font-medium">
+                {isUserLoggedIn ? "No matching dogs yet" : "Your Austin dog community is private"}
+              </h3>
+              <p className="text-muted-foreground mt-1 max-w-md mx-auto">
+                {isUserLoggedIn
+                  ? "Add your dog and complete their preferences to start finding compatible playdates."
+                  : "Existing members and their dogs stay protected until you sign in with your SniffTown account."}
+              </p>
+              {!isUserLoggedIn && (
+                <Button asChild className="mt-5 rounded-full">
+                  <Link href="/auth">Sign In to SniffTown</Link>
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-6">

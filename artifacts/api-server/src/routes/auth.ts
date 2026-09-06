@@ -38,8 +38,8 @@ type SupabaseAuthResult = {
 function setSessionCookies(res: Response, auth: SupabaseAuthResult) {
   const options = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    secure: true,
+    sameSite: "none" as const,
     path: "/",
   };
 
@@ -61,6 +61,19 @@ function setSessionCookies(res: Response, auth: SupabaseAuthResult) {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
   }
+}
+
+function clearSessionCookies(res: Response) {
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none" as const,
+    path: "/",
+  };
+
+  res.clearCookie(ACCESS_COOKIE, options);
+  res.clearCookie(REFRESH_COOKIE, options);
+  res.clearCookie(USER_COOKIE, options);
 }
 
 function toCurrentUser(user?: SupabaseUser) {
@@ -142,9 +155,7 @@ router.post("/auth/signout", async (req, res) => {
       headers: { Authorization: `Bearer ${token}` },
     });
   }
-  res.clearCookie(ACCESS_COOKIE, { path: "/" });
-  res.clearCookie(REFRESH_COOKIE, { path: "/" });
-  res.clearCookie(USER_COOKIE, { path: "/" });
+  clearSessionCookies(res);
   res.status(204).send();
 });
 
@@ -166,9 +177,7 @@ router.get("/auth/me", async (req, res) => {
   });
 
   if (!response.ok) {
-    res.clearCookie(ACCESS_COOKIE, { path: "/" });
-    res.clearCookie(REFRESH_COOKIE, { path: "/" });
-    res.clearCookie(USER_COOKIE, { path: "/" });
+    clearSessionCookies(res);
     res.json(
       GetCurrentUserResponse.parse({
         id: null,

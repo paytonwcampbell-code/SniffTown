@@ -474,11 +474,15 @@ components:
           type: string
         slug:
           type: string
+        address:
+          type: ["string", "null"]
+        offLeash:
+          type: boolean
         memberCount:
           type: number
         isMember:
           type: boolean
-      required: [id, name, city, state, slug, memberCount, isMember]
+      required: [id, name, city, state, slug, address, offLeash, memberCount, isMember]
     ParkPackMembershipInput:
       type: object
       properties:

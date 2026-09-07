@@ -177,11 +177,16 @@ function LocalParkPackCard({
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary">
             <MapPin className="h-5 w-5 text-secondary-foreground" />
           </div>
-          {park.isMember && <Badge className="border-none">Joined</Badge>}
+          <div className="flex flex-wrap justify-end gap-2">
+            {park.offLeash && (
+              <Badge variant="secondary">Off-leash area</Badge>
+            )}
+            {park.isMember && <Badge className="border-none">Joined</Badge>}
+          </div>
         </div>
         <h3 className="font-display text-xl font-bold">{park.name} Pack</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          {park.city}, {park.state}
+          {park.address || `${park.city}, ${park.state}`}
         </p>
         <p className="mt-4 flex-1 text-sm leading-relaxed text-foreground/75">
           Meet dogs and people who walk, play, and plan meetups around {park.name}.
@@ -221,6 +226,7 @@ export default function Home() {
   const { data: dogs, isLoading: dogsLoading } = useListDogs();
   const { data: parks } = useListParks();
   const { toast } = useToast();
+  const [parkFilter, setParkFilter] = useState<"all" | "off-leash" | "other">("all");
 
   const isUserLoggedIn = !!user?.id;
 
@@ -392,15 +398,42 @@ export default function Home() {
               Join the community around a park you already visit. Park packs are
               for local walks, playdates, and meetups—not private pet-care access.
             </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              {[
+                ["all", "All parks"],
+                ["off-leash", "Off-leash areas"],
+                ["other", "Other local parks"],
+              ].map(([value, label]) => (
+                <Button
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={parkFilter === value ? "default" : "outline"}
+                  className="rounded-full"
+                  onClick={() =>
+                    setParkFilter(value as "all" | "off-leash" | "other")
+                  }
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {parks?.map((park) => (
+            {parks
+              ?.filter(
+                (park) =>
+                  parkFilter === "all" ||
+                  (parkFilter === "off-leash" && park.offLeash) ||
+                  (parkFilter === "other" && !park.offLeash),
+              )
+              .map((park) => (
               <LocalParkPackCard
                 key={park.id}
                 park={park}
                 isUserLoggedIn={isUserLoggedIn}
               />
-            ))}
+              ))}
           </div>
         </div>
       </section>

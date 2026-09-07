@@ -284,13 +284,16 @@ export default function PackPage() {
                     <div>
                       <div className="flex items-center gap-3 mb-1">
                         <h3 className="font-display font-bold text-xl">{park.name} Pack</h3>
+                        {park.offLeash && (
+                          <Badge variant="secondary">Off-leash area</Badge>
+                        )}
                         {park.isMember && (
                           <Badge className="border-none">Joined</Badge>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground flex items-center mt-2">
                         <MapPin className="h-4 w-4 mr-1.5 opacity-70" />
-                        Meets around {park.name} in {park.city}
+                        {park.address || `Meets around ${park.name} in ${park.city}`}
                       </p>
                     </div>
                     <Button

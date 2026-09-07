@@ -398,27 +398,37 @@ router.get("/parks", async (req, res) => {
       typeof currentUser?.id === "string" ? currentUser.id : null;
     const [parks, packs, memberships] = await Promise.all([
       jsonRows("/rest/v1/parks?select=*&order=name.asc&limit=50"),
-      jsonRows("/rest/v1/packs?select=id,name,location,is_public&is_public=eq.true"),
+      jsonRows(
+        "/rest/v1/packs?select=id,name,location,is_public,tags&is_public=eq.true",
+      ),
       jsonRows("/rest/v1/pack_members?select=pack_id,user_id", authHeaders),
     ]);
-    const publicPackIds = new Set(packs.map((pack) => String(pack.id)));
-    const result = parks.map((park) => ({
-      id: String(park.id),
-      name: String(park.name),
-      city: String(park.city),
-      state: String(park.state),
-      slug: String(park.slug),
-      memberCount: memberships.filter(
-        (membership) => String(membership.pack_id) === String(park.id),
-      ).length,
-      isMember:
-        publicPackIds.has(String(park.id)) &&
-        memberships.some(
-          (membership) =>
-            String(membership.pack_id) === String(park.id) &&
-            String(membership.user_id) === currentUserId,
-        ),
-    }));
+    const publicPacks = new Map(
+      packs.map((pack) => [String(pack.id), pack]),
+    );
+    const result = parks.map((park) => {
+      const pack = publicPacks.get(String(park.id));
+      const tags = Array.isArray(pack?.tags) ? pack.tags.map(String) : [];
+      return {
+        id: String(park.id),
+        name: String(park.name),
+        city: String(park.city),
+        state: String(park.state),
+        slug: String(park.slug),
+        address: typeof pack?.location === "string" ? pack.location : null,
+        offLeash: tags.includes("off-leash"),
+        memberCount: memberships.filter(
+          (membership) => String(membership.pack_id) === String(park.id),
+        ).length,
+        isMember:
+          Boolean(pack) &&
+          memberships.some(
+            (membership) =>
+              String(membership.pack_id) === String(park.id) &&
+              String(membership.user_id) === currentUserId,
+          ),
+      };
+    });
     res.json(ListParksResponse.parse(result));
   } catch (error) {
     req.log.error({ err: error }, "Unable to list parks");

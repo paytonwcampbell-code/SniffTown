@@ -104,6 +104,8 @@ export const ListParksResponseItem = zod.object({
   "city": zod.string(),
   "state": zod.string(),
   "slug": zod.string(),
+  "address": zod.string().nullable(),
+  "offLeash": zod.boolean(),
   "memberCount": zod.number(),
   "isMember": zod.boolean()
 })

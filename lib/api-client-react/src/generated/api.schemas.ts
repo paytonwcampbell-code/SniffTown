@@ -40,6 +40,9 @@ export interface Park {
   city: string;
   state: string;
   slug: string;
+  /** @nullable */
+  address: string | null;
+  offLeash: boolean;
   memberCount: number;
   isMember: boolean;
 }

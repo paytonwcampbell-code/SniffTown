@@ -39,6 +39,8 @@ import type {
   PackRequestResponse,
   PackRequestResponseInput,
   Park,
+  ParkPackMembershipInput,
+  ParkPackMembershipResult,
   RefreshSessionInput,
   SendMessageResult
 } from './api.schemas';
@@ -460,7 +462,7 @@ export const getListParksUrl = () => {
 }
 
 /**
- * @summary List nearby parks
+ * @summary List local park packs
  */
 export const listParks = async ( options?: Parameters<typeof customFetch>[1]): Promise<Park[]> => {
 
@@ -507,7 +509,7 @@ export type ListParksQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List nearby parks
+ * @summary List local park packs
  */
 
 export function useListParks<TData = Awaited<ReturnType<typeof listParks>>, TError = ErrorType<unknown>>(
@@ -527,6 +529,78 @@ export function useListParks<TData = Awaited<ReturnType<typeof listParks>>, TErr
 
 
 
+
+export const getUpdateParkPackMembershipUrl = (parkId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/membership`
+}
+
+/**
+ * @summary Join or leave a local park pack
+ */
+export const updateParkPackMembership = async (parkId: string,
+    parkPackMembershipInput: ParkPackMembershipInput, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackMembershipResult> => {
+
+  return customFetch<ParkPackMembershipResult>(getUpdateParkPackMembershipUrl(parkId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(parkPackMembershipInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateParkPackMembershipMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateParkPackMembership>>, TError,{parkId: string;data: BodyType<ParkPackMembershipInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateParkPackMembership>>, TError,{parkId: string;data: BodyType<ParkPackMembershipInput>}, TContext> => {
+
+const mutationKey = ['updateParkPackMembership'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateParkPackMembership>>, {parkId: string;data: BodyType<ParkPackMembershipInput>}> = (props) => {
+          const {parkId,data} = props ?? {};
+
+          return  updateParkPackMembership(parkId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateParkPackMembershipMutationResult = NonNullable<Awaited<ReturnType<typeof updateParkPackMembership>>>
+    export type UpdateParkPackMembershipMutationBody = BodyType<ParkPackMembershipInput>
+    export type UpdateParkPackMembershipMutationError = ErrorType<void>
+
+    /**
+ * @summary Join or leave a local park pack
+ */
+export const useUpdateParkPackMembership = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateParkPackMembership>>, TError,{parkId: string;data: BodyType<ParkPackMembershipInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateParkPackMembership>>,
+        TError,
+        {parkId: string;data: BodyType<ParkPackMembershipInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateParkPackMembershipMutationOptions(options));
+    }
 
 export const getListIncomingPackRequestsUrl = () => {
 

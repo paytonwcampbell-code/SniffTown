@@ -10,6 +10,9 @@ import {
   ListIncomingPackRequestsResponse,
   ListPacksResponse,
   ListParksResponse,
+  UpdateParkPackMembershipBody,
+  UpdateParkPackMembershipParams,
+  UpdateParkPackMembershipResponse,
   RespondToPackRequestBody,
   RespondToPackRequestParams,
   RespondToPackRequestResponse,
@@ -382,23 +385,126 @@ router.post("/pack-requests/:requestId/response", async (req, res) => {
 });
 
 router.get("/parks", async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
   try {
-    const [parks, packs] = await Promise.all([
+    const authHeaders = bearer(req);
+    const currentUserResponse = authHeaders.Authorization
+      ? await supabaseUserRequest("/auth/v1/user", { headers: authHeaders })
+      : null;
+    const currentUser = currentUserResponse?.ok
+      ? ((await currentUserResponse.json()) as { id?: unknown })
+      : null;
+    const currentUserId =
+      typeof currentUser?.id === "string" ? currentUser.id : null;
+    const [parks, packs, memberships] = await Promise.all([
       jsonRows("/rest/v1/parks?select=*&order=name.asc&limit=50"),
       jsonRows("/rest/v1/packs?select=id,name,location,is_public&is_public=eq.true"),
+      jsonRows("/rest/v1/pack_members?select=pack_id,user_id", authHeaders),
     ]);
+    const publicPackIds = new Set(packs.map((pack) => String(pack.id)));
     const result = parks.map((park) => ({
       id: String(park.id),
       name: String(park.name),
       city: String(park.city),
       state: String(park.state),
       slug: String(park.slug),
-      packCount: packs.filter((pack) => pack.id === park.id).length,
+      memberCount: memberships.filter(
+        (membership) => String(membership.pack_id) === String(park.id),
+      ).length,
+      isMember:
+        publicPackIds.has(String(park.id)) &&
+        memberships.some(
+          (membership) =>
+            String(membership.pack_id) === String(park.id) &&
+            String(membership.user_id) === currentUserId,
+        ),
     }));
     res.json(ListParksResponse.parse(result));
   } catch (error) {
     req.log.error({ err: error }, "Unable to list parks");
     res.status(502).json({ error: "Unable to load parks right now." });
+  }
+});
+
+router.post("/parks/:parkId/membership", async (req, res) => {
+  const params = UpdateParkPackMembershipParams.safeParse(req.params);
+  const body = UpdateParkPackMembershipBody.safeParse(req.body);
+  const token = getAccessToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Sign in to join a local park pack." });
+    return;
+  }
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Choose whether to join or leave the pack." });
+    return;
+  }
+
+  try {
+    const authHeaders = { Authorization: `Bearer ${token}` };
+    const userResponse = await supabaseUserRequest("/auth/v1/user", {
+      headers: authHeaders,
+    });
+    if (!userResponse.ok) {
+      res.status(401).json({ error: "Your session has expired." });
+      return;
+    }
+    const user = (await userResponse.json()) as { id: string };
+    const parkId = params.data.parkId;
+    const [parks, packs] = await Promise.all([
+      jsonRows(
+        `/rest/v1/parks?select=id&id=eq.${encodeURIComponent(parkId)}&limit=1`,
+      ),
+      jsonRows(
+        `/rest/v1/packs?select=id&id=eq.${encodeURIComponent(parkId)}&is_public=eq.true&limit=1`,
+      ),
+    ]);
+    if (!parks[0] || !packs[0]) {
+      res.status(404).json({ error: "Local park pack not found." });
+      return;
+    }
+
+    const membershipPath =
+      `/rest/v1/pack_members?pack_id=eq.${encodeURIComponent(parkId)}` +
+      `&user_id=eq.${encodeURIComponent(user.id)}`;
+    const existing = await jsonRows(
+      `${membershipPath}&select=id&limit=1`,
+      authHeaders,
+    );
+
+    if (body.data.action === "join" && existing.length === 0) {
+      const response = await supabaseUserRequest("/rest/v1/pack_members", {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ pack_id: parkId, user_id: user.id }),
+      });
+      if (!response.ok) {
+        res.status(response.status).json({ error: await readProviderError(response) });
+        return;
+      }
+    } else if (body.data.action === "leave" && existing.length > 0) {
+      const response = await supabaseUserRequest(membershipPath, {
+        method: "DELETE",
+        headers: { ...authHeaders, Prefer: "return=minimal" },
+      });
+      if (!response.ok) {
+        res.status(response.status).json({ error: await readProviderError(response) });
+        return;
+      }
+    }
+
+    res.json(
+      UpdateParkPackMembershipResponse.parse({
+        parkId,
+        isMember: body.data.action === "join",
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to update local park pack membership");
+    res.status(502).json({ error: "Unable to update this park pack right now." });
   }
 });
 

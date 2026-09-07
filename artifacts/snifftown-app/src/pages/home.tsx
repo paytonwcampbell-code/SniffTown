@@ -4,12 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { 
   useListDogs, 
   useListParks, 
-  useListPacks,
   useAddDogToPack,
+  useUpdateParkPackMembership,
   useGetCurrentUser,
   useSendContactMessage,
   getListDogsQueryKey,
-  type Dog as DogType
+  getListParksQueryKey,
+  type Dog as DogType,
+  type Park,
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
@@ -136,11 +138,88 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
   );
 }
 
+function LocalParkPackCard({
+  park,
+  isUserLoggedIn,
+}: {
+  park: Park;
+  isUserLoggedIn: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const updateMembership = useUpdateParkPackMembership({
+    mutation: {
+      onSuccess: (result) => {
+        toast({
+          title: result.isMember
+            ? `Joined the ${park.name} Pack`
+            : `Left the ${park.name} Pack`,
+          description: result.isMember
+            ? "You’ll see this park’s local community and activity."
+            : "You can rejoin whenever you’re ready.",
+        });
+        queryClient.invalidateQueries({ queryKey: getListParksQueryKey() });
+      },
+      onError: (error) => {
+        toast({
+          title: "Couldn’t update your park pack",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  return (
+    <Card className="border-border/60 bg-card transition-all hover:border-primary/30 hover:shadow-sm">
+      <CardContent className="flex h-full flex-col p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary">
+            <MapPin className="h-5 w-5 text-secondary-foreground" />
+          </div>
+          {park.isMember && <Badge className="border-none">Joined</Badge>}
+        </div>
+        <h3 className="font-display text-xl font-bold">{park.name} Pack</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {park.city}, {park.state}
+        </p>
+        <p className="mt-4 flex-1 text-sm leading-relaxed text-foreground/75">
+          Meet dogs and people who walk, play, and plan meetups around {park.name}.
+        </p>
+        <div className="mt-5 border-t border-border/40 pt-4">
+          {isUserLoggedIn ? (
+            <Button
+              className="w-full rounded-full"
+              variant={park.isMember ? "outline" : "default"}
+              disabled={updateMembership.isPending}
+              onClick={() =>
+                updateMembership.mutate({
+                  parkId: park.id,
+                  data: { action: park.isMember ? "leave" : "join" },
+                })
+              }
+            >
+              {updateMembership.isPending
+                ? "Updating..."
+                : park.isMember
+                  ? "Leave pack"
+                  : "Join local pack"}
+            </Button>
+          ) : (
+            <Button asChild className="w-full rounded-full">
+              <Link href="/auth">Sign in to join</Link>
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Home() {
   const { data: user } = useGetCurrentUser();
   const { data: dogs, isLoading: dogsLoading } = useListDogs();
   const { data: parks } = useListParks();
-  const { data: packs } = useListPacks();
   const { toast } = useToast();
 
   const isUserLoggedIn = !!user?.id;
@@ -186,7 +265,7 @@ export default function Home() {
             Find the right <span className="text-primary italic">friends</span> for your best friend.
           </h1>
           <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            SniffTown connects dogs and their people across Austin. Find compatible playdates and walking buddies, build a trusted pack, and trade pet-sitting help with neighbors who already know your dog.
+            SniffTown connects dogs and their people across Austin. Find compatible playdates and walking buddies, join local park packs, and grow a trusted circle with neighbors who already know your dog.
           </p>
           
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -299,62 +378,29 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Local Parks & Public Packs */}
+      {/* Local Park Packs */}
       <section className="py-16 md:py-24 bg-background">
         <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16">
-            
-            {/* Parks */}
-            <div>
-              <div className="flex items-center gap-3 mb-8 pb-4 border-b border-border/40">
-                <div className="p-2 bg-secondary rounded-lg"><MapPin className="h-5 w-5 text-secondary-foreground" /></div>
-                <h2 className="font-display text-2xl font-bold">Local Parks</h2>
-              </div>
-              
-              <div className="space-y-4">
-                {parks?.map(park => (
-                  <div key={park.id} className="group flex items-center justify-between p-4 rounded-xl hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/60">
-                    <div>
-                      <h4 className="font-medium text-lg">{park.name}</h4>
-                      <p className="text-sm text-muted-foreground">{park.city}, {park.state}</p>
-                    </div>
-                    <Badge variant="secondary" className="bg-background group-hover:bg-white transition-colors">
-                      {park.packCount} Packs active
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Public Packs */}
-            <div>
-              <div className="flex items-center gap-3 mb-8 pb-4 border-b border-border/40">
-                <div className="p-2 bg-accent/50 rounded-lg"><Users className="h-5 w-5 text-accent-foreground" /></div>
-                <h2 className="font-display text-2xl font-bold">Public Packs</h2>
-              </div>
-              
-              <div className="space-y-4">
-                {packs?.filter(p => p.isPublic).slice(0, 5).map(pack => (
-                  <div key={pack.id} className="group flex flex-col p-5 rounded-xl border border-border/40 hover:border-primary/30 hover:shadow-sm bg-card transition-all">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium font-display text-lg">{pack.name}</h4>
-                      <Badge variant="outline" className="font-normal text-xs">{pack.memberCount} members</Badge>
-                    </div>
-                    {pack.location && (
-                      <p className="text-sm text-muted-foreground flex items-center mt-1">
-                        <MapPin className="h-3 w-3 mr-1 inline opacity-70" /> {pack.location}
-                      </p>
-                    )}
-                  </div>
-                ))}
-                {packs?.filter(p => p.isPublic).length === 0 && (
-                  <div className="text-center py-8 px-4 border border-dashed rounded-xl text-muted-foreground">
-                    No public packs yet. Be the first to start one!
-                  </div>
-                )}
-              </div>
-            </div>
-
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <Badge variant="outline" className="mb-4 bg-secondary/40">
+              Austin park communities
+            </Badge>
+            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+              Find your local park pack
+            </h2>
+            <p className="mt-3 text-lg text-muted-foreground">
+              Join the community around a park you already visit. Park packs are
+              for local walks, playdates, and meetups—not private pet-care access.
+            </p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {parks?.map((park) => (
+              <LocalParkPackCard
+                key={park.id}
+                park={park}
+                isUserLoggedIn={isUserLoggedIn}
+              />
+            ))}
           </div>
         </div>
       </section>

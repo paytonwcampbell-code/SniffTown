@@ -3,13 +3,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { 
   useListDogs, 
-  useListPacks,
+  useListParks,
   useGetCurrentUser,
   useGetMyDog,
   useListIncomingPackRequests,
   useRespondToPackRequest,
+  useUpdateParkPackMembership,
   getListDogsQueryKey,
   getListIncomingPackRequestsQueryKey,
+  getListParksQueryKey,
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +30,7 @@ export default function PackPage() {
   const { toast } = useToast();
   const { data: user, isLoading: isUserLoading } = useGetCurrentUser();
   const { data: allDogs, isLoading: isDogsLoading } = useListDogs();
-  const { data: allPacks, isLoading: isPacksLoading } = useListPacks();
+  const { data: parkPacks, isLoading: isParksLoading } = useListParks();
   const { data: myDog } = useGetMyDog();
   const { data: incomingRequests = [] } = useListIncomingPackRequests({
     query: {
@@ -48,6 +50,23 @@ export default function PackPage() {
       onError: (error) => {
         toast({
           title: "Couldn’t update the request",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    },
+  });
+  const updateParkMembership = useUpdateParkPackMembership({
+    mutation: {
+      onSuccess: (result) => {
+        toast({
+          title: result.isMember ? "Local park pack joined" : "Local park pack left",
+        });
+        queryClient.invalidateQueries({ queryKey: getListParksQueryKey() });
+      },
+      onError: (error) => {
+        toast({
+          title: "Couldn’t update your park pack",
           description: error.message,
           variant: "destructive",
         });
@@ -151,7 +170,7 @@ export default function PackPage() {
       <Tabs defaultValue="mypack" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 mb-8 bg-secondary/50">
           <TabsTrigger value="mypack" className="data-[state=active]:bg-background">My Matches</TabsTrigger>
-          <TabsTrigger value="publicpacks" className="data-[state=active]:bg-background">Community Packs</TabsTrigger>
+          <TabsTrigger value="localpacks" className="data-[state=active]:bg-background">Local Park Packs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="mypack" className="space-y-8 animate-in fade-in-50 duration-500">
@@ -239,43 +258,57 @@ export default function PackPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="publicpacks" className="space-y-8 animate-in fade-in-50 duration-500">
+        <TabsContent value="localpacks" className="space-y-8 animate-in fade-in-50 duration-500">
           <div className="mb-6">
-            <h2 className="font-display text-2xl font-bold">Public Neighborhood Packs</h2>
-            <p className="text-muted-foreground mt-1">Join a community group based on location or play style.</p>
+            <h2 className="font-display text-2xl font-bold">Austin Local Park Packs</h2>
+            <p className="text-muted-foreground mt-1">
+              Join the community around parks you visit for local walks, playdates, and meetups.
+            </p>
           </div>
 
-          {isPacksLoading ? (
+          {isParksLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map(i => <Card key={i} className="h-24 animate-pulse bg-muted/20" />)}
             </div>
-          ) : !allPacks || allPacks.length === 0 ? (
+          ) : !parkPacks || parkPacks.length === 0 ? (
             <div className="text-center py-16 px-4 border border-dashed rounded-2xl bg-background">
               <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium">No public packs yet</h3>
-              <p className="text-muted-foreground mt-1 max-w-md mx-auto">Public packs help organize large group walks.</p>
+              <h3 className="text-lg font-medium">No local park packs yet</h3>
+              <p className="text-muted-foreground mt-1 max-w-md mx-auto">Suggest an Austin park and we’ll add its local community.</p>
             </div>
           ) : (
             <div className="grid gap-4">
-              {allPacks.filter(p => p.isPublic).map(pack => (
-                <Card key={pack.id} className="border-border/60 hover-elevate transition-all">
+              {parkPacks.map(park => (
+                <Card key={park.id} className="border-border/60 hover-elevate transition-all">
                   <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-display font-bold text-xl">{pack.name}</h3>
-                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
-                          {pack.memberCount} members
-                        </Badge>
+                        <h3 className="font-display font-bold text-xl">{park.name} Pack</h3>
+                        {park.isMember && (
+                          <Badge className="border-none">Joined</Badge>
+                        )}
                       </div>
-                      {pack.location && (
-                        <p className="text-sm text-muted-foreground flex items-center mt-2">
-                          <MapPin className="h-4 w-4 mr-1.5 opacity-70" /> 
-                          Meets at {pack.location}
-                        </p>
-                      )}
+                      <p className="text-sm text-muted-foreground flex items-center mt-2">
+                        <MapPin className="h-4 w-4 mr-1.5 opacity-70" />
+                        Meets around {park.name} in {park.city}
+                      </p>
                     </div>
-                    <Button variant="secondary" className="shrink-0 w-full sm:w-auto">
-                      Request to Join
+                    <Button
+                      variant={park.isMember ? "outline" : "secondary"}
+                      className="shrink-0 w-full sm:w-auto"
+                      disabled={updateParkMembership.isPending}
+                      onClick={() =>
+                        updateParkMembership.mutate({
+                          parkId: park.id,
+                          data: { action: park.isMember ? "leave" : "join" },
+                        })
+                      }
+                    >
+                      {updateParkMembership.isPending
+                        ? "Updating..."
+                        : park.isMember
+                          ? "Leave pack"
+                          : "Join local pack"}
                     </Button>
                   </div>
                 </Card>

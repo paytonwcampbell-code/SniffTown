@@ -1,4 +1,5 @@
 - [Supabase user sessions](supabase-user-sessions.md) — RLS member requests must use direct Supabase access; the connector rejects forwarded user bearer tokens.
 - [Incognito preview sessions](incognito-preview-sessions.md) — private Replit preview embeds may lose HTTP-only auth cookies in Chrome Incognito; use a top-level or published URL.
-- [Relationship model](relationship-model.md) — private interest becomes a mutual match; chat follows matching, while trusted packs remain a later explicit relationship.
+- [Relationship model](relationship-model.md) — interests become matches; park packs are public/local, while trusted circles remain private care relationships.
 - [Web and native sessions](web-native-sessions.md) — web keeps HTTP-only cookies; native uses rotated bearer tokens in secure device storage against the same API.
+- [Mobile proximity privacy](mobile-proximity-privacy.md) — precise location is an opt-in native-app capability; web stays location-neutral and peers see only coarse distance.

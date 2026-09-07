@@ -12,5 +12,6 @@ export interface Park {
   city: string;
   state: string;
   slug: string;
-  packCount: number;
+  memberCount: number;
+  isMember: boolean;
 }

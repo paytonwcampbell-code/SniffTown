@@ -96,7 +96,7 @@ export const AddDogToPackResponse = zod.object({
 
 
 /**
- * @summary List nearby parks
+ * @summary List local park packs
  */
 export const ListParksResponseItem = zod.object({
   "id": zod.string(),
@@ -104,9 +104,27 @@ export const ListParksResponseItem = zod.object({
   "city": zod.string(),
   "state": zod.string(),
   "slug": zod.string(),
-  "packCount": zod.number()
+  "memberCount": zod.number(),
+  "isMember": zod.boolean()
 })
 export const ListParksResponse = zod.array(ListParksResponseItem)
+
+
+/**
+ * @summary Join or leave a local park pack
+ */
+export const UpdateParkPackMembershipParams = zod.object({
+  "parkId": zod.coerce.string()
+})
+
+export const UpdateParkPackMembershipBody = zod.object({
+  "action": zod.enum(['join', 'leave'])
+})
+
+export const UpdateParkPackMembershipResponse = zod.object({
+  "parkId": zod.string(),
+  "isMember": zod.boolean()
+})
 
 
 /**

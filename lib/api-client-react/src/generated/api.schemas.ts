@@ -40,7 +40,25 @@ export interface Park {
   city: string;
   state: string;
   slug: string;
-  packCount: number;
+  memberCount: number;
+  isMember: boolean;
+}
+
+export type ParkPackMembershipInputAction = typeof ParkPackMembershipInputAction[keyof typeof ParkPackMembershipInputAction];
+
+
+export const ParkPackMembershipInputAction = {
+  join: 'join',
+  leave: 'leave',
+} as const;
+
+export interface ParkPackMembershipInput {
+  action: ParkPackMembershipInputAction;
+}
+
+export interface ParkPackMembershipResult {
+  parkId: string;
+  isMember: boolean;
 }
 
 export interface Pack {

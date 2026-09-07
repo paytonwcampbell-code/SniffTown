@@ -115,7 +115,7 @@ paths:
     get:
       operationId: listParks
       tags: [parks]
-      summary: List nearby parks
+      summary: List local park packs
       responses:
         "200":
           description: Nearby parks
@@ -125,6 +125,34 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Park"
+  /parks/{parkId}/membership:
+    post:
+      operationId: updateParkPackMembership
+      tags: [parks]
+      summary: Join or leave a local park pack
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkPackMembershipInput"
+      responses:
+        "200":
+          description: Park pack membership updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkPackMembershipResult"
+        "401":
+          description: Authentication required
+        "404":
+          description: Local park pack not found
   /pack-requests/incoming:
     get:
       operationId: listIncomingPackRequests
@@ -446,9 +474,26 @@ components:
           type: string
         slug:
           type: string
-        packCount:
+        memberCount:
           type: number
-      required: [id, name, city, state, slug, packCount]
+        isMember:
+          type: boolean
+      required: [id, name, city, state, slug, memberCount, isMember]
+    ParkPackMembershipInput:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [join, leave]
+      required: [action]
+    ParkPackMembershipResult:
+      type: object
+      properties:
+        parkId:
+          type: string
+        isMember:
+          type: boolean
+      required: [parkId, isMember]
     Pack:
       type: object
       properties:

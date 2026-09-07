@@ -180,13 +180,13 @@ export default function Home() {
         
         <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <Badge variant="outline" className="bg-white border-primary/20 text-primary mb-6 px-3 py-1 font-medium tracking-wide">
-            Austin's Neighborhood Dog Community
+            Your Local Austin Dog Community
           </Badge>
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground max-w-4xl mx-auto leading-[1.1]">
             Find the right <span className="text-primary italic">friends</span> for your best friend.
           </h1>
           <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            SniffTown connects dogs and their people across Austin, Texas. Find compatible playdates and walking buddies, build a trusted pack, and trade pet-sitting help with neighbors who already know your dog.
+            SniffTown connects dogs and their people across Austin. Find compatible playdates and walking buddies, build a trusted pack, and trade pet-sitting help with neighbors who already know your dog.
           </p>
           
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">

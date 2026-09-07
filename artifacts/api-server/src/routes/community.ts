@@ -259,56 +259,6 @@ router.post("/dogs/:dogId/pack", async (req, res) => {
     return;
   }
 
-  const incomingResponse = await supabaseUserRequest(
-    "/rest/v1/rpc/get_incoming_pack_requests",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: "{}",
-    },
-  );
-  if (incomingResponse.ok) {
-    const incoming = (await incomingResponse.json()) as RecordValue[];
-    const reciprocal = incoming.find(
-      (request) =>
-        String(request.from_dog_id ?? "") === params.data.dogId &&
-        String(request.status ?? "pending") === "pending",
-    );
-    if (reciprocal?.id) {
-      const matchResponse = await supabaseUserRequest(
-        "/rest/v1/rpc/respond_to_pack_request",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            request_id: reciprocal.id,
-            new_status: "accepted",
-          }),
-        },
-      );
-      if (!matchResponse.ok) {
-        res.status(matchResponse.status).json({
-          error: await readProviderError(matchResponse),
-        });
-        return;
-      }
-      res.status(201).json(
-        AddDogToPackResponse.parse({
-          id: String(reciprocal.id),
-          dogId: params.data.dogId,
-          status: "matched",
-        }),
-      );
-      return;
-    }
-  }
-
   const response = await supabaseUserRequest("/rest/v1/rpc/send_pack_request", {
     method: "POST",
     headers: {

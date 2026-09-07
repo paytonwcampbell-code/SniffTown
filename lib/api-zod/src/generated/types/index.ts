@@ -11,6 +11,7 @@ export * from './authResult';
 export * from './contactMessage';
 export * from './conversationReadResult';
 export * from './conversationSummary';
+export * from './createLocalParkPackInput';
 export * from './currentUser';
 export * from './dog';
 export * from './dogInput';

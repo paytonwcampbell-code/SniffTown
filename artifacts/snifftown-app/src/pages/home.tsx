@@ -181,6 +181,9 @@ function LocalParkPackCard({
             {park.offLeash && (
               <Badge variant="secondary">Off-leash area</Badge>
             )}
+            {park.communityCreated && (
+              <Badge variant="outline">Community-created</Badge>
+            )}
             {park.isMember && <Badge className="border-none">Joined</Badge>}
           </div>
         </div>

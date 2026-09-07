@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { 
@@ -6,6 +6,7 @@ import {
   useListParks,
   useGetCurrentUser,
   useGetMyDog,
+  useCreateLocalParkPack,
   useListIncomingPackRequests,
   useRespondToPackRequest,
   useUpdateParkPackMembership,
@@ -15,6 +16,8 @@ import {
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,6 +41,10 @@ export default function PackPage() {
       refetchInterval: 5000,
     },
   });
+  const [showCreatePack, setShowCreatePack] = useState(false);
+  const [newParkName, setNewParkName] = useState("");
+  const [newParkAddress, setNewParkAddress] = useState("");
+  const [newParkDescription, setNewParkDescription] = useState("");
   const respondToRequest = useRespondToPackRequest({
     mutation: {
       onSuccess: (result) => {
@@ -67,6 +74,28 @@ export default function PackPage() {
       onError: (error) => {
         toast({
           title: "Couldn’t update your park pack",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    },
+  });
+  const createParkPack = useCreateLocalParkPack({
+    mutation: {
+      onSuccess: (park) => {
+        toast({
+          title: `${park.name} Pack is live`,
+          description: "You’re its first member and pack organizer.",
+        });
+        setNewParkName("");
+        setNewParkAddress("");
+        setNewParkDescription("");
+        setShowCreatePack(false);
+        queryClient.invalidateQueries({ queryKey: getListParksQueryKey() });
+      },
+      onError: (error) => {
+        toast({
+          title: "Couldn’t start this park pack",
           description: error.message,
           variant: "destructive",
         });
@@ -259,12 +288,113 @@ export default function PackPage() {
         </TabsContent>
 
         <TabsContent value="localpacks" className="space-y-8 animate-in fade-in-50 duration-500">
-          <div className="mb-6">
-            <h2 className="font-display text-2xl font-bold">Austin Local Park Packs</h2>
-            <p className="text-muted-foreground mt-1">
-              Join the community around parks you visit for local walks, playdates, and meetups.
-            </p>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="font-display text-2xl font-bold">Austin Local Park Packs</h2>
+              <p className="text-muted-foreground mt-1">
+                Join the community around parks you visit for local walks, playdates, and meetups.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0"
+              onClick={() => setShowCreatePack((current) => !current)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Start a park pack
+            </Button>
           </div>
+
+          {showCreatePack && (
+            <Card className="border-primary/25 bg-primary/[0.03]">
+              <CardContent className="p-5 sm:p-6">
+                <h3 className="font-display text-xl font-bold">Start a local park pack</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add an Austin park that isn’t listed yet. Community-created packs
+                  are labeled separately from official City off-leash areas.
+                </p>
+                <form
+                  className="mt-5 grid gap-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    createParkPack.mutate({
+                      data: {
+                        name: newParkName.trim(),
+                        address: newParkAddress.trim(),
+                        description: newParkDescription.trim() || undefined,
+                      },
+                    });
+                  }}
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="park-name" className="text-sm font-medium">
+                        Park name
+                      </label>
+                      <Input
+                        id="park-name"
+                        className="mt-2 bg-background"
+                        value={newParkName}
+                        onChange={(event) => setNewParkName(event.target.value)}
+                        placeholder="e.g. Ramsey Neighborhood Park"
+                        minLength={3}
+                        maxLength={100}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="park-address" className="text-sm font-medium">
+                        Austin address
+                      </label>
+                      <Input
+                        id="park-address"
+                        className="mt-2 bg-background"
+                        value={newParkAddress}
+                        onChange={(event) => setNewParkAddress(event.target.value)}
+                        placeholder="4301 Rosedale Ave."
+                        minLength={5}
+                        maxLength={160}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="park-description" className="text-sm font-medium">
+                      What should neighbors know? <span className="font-normal text-muted-foreground">(optional)</span>
+                    </label>
+                    <Textarea
+                      id="park-description"
+                      className="mt-2 min-h-24 resize-none bg-background"
+                      value={newParkDescription}
+                      onChange={(event) => setNewParkDescription(event.target.value)}
+                      placeholder="Share common meetup times, trail details, or what makes this park a good gathering place."
+                      maxLength={500}
+                    />
+                  </div>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setShowCreatePack(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={
+                        createParkPack.isPending ||
+                        newParkName.trim().length < 3 ||
+                        newParkAddress.trim().length < 5
+                      }
+                    >
+                      {createParkPack.isPending ? "Starting..." : "Create and join pack"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
           {isParksLoading ? (
             <div className="space-y-4">
@@ -286,6 +416,9 @@ export default function PackPage() {
                         <h3 className="font-display font-bold text-xl">{park.name} Pack</h3>
                         {park.offLeash && (
                           <Badge variant="secondary">Off-leash area</Badge>
+                        )}
+                        {park.communityCreated && (
+                          <Badge variant="outline">Community-created</Badge>
                         )}
                         {park.isMember && (
                           <Badge className="border-none">Joined</Badge>

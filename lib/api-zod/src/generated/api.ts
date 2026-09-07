@@ -106,10 +106,44 @@ export const ListParksResponseItem = zod.object({
   "slug": zod.string(),
   "address": zod.string().nullable(),
   "offLeash": zod.boolean(),
+  "communityCreated": zod.boolean(),
   "memberCount": zod.number(),
   "isMember": zod.boolean()
 })
 export const ListParksResponse = zod.array(ListParksResponseItem)
+
+
+/**
+ * @summary Start a community-created local park pack
+ */
+export const createLocalParkPackBodyNameMin = 3;
+export const createLocalParkPackBodyNameMax = 100;
+
+export const createLocalParkPackBodyAddressMin = 5;
+export const createLocalParkPackBodyAddressMax = 160;
+
+export const createLocalParkPackBodyDescriptionMax = 500;
+
+
+
+export const CreateLocalParkPackBody = zod.object({
+  "name": zod.string().min(createLocalParkPackBodyNameMin).max(createLocalParkPackBodyNameMax),
+  "address": zod.string().min(createLocalParkPackBodyAddressMin).max(createLocalParkPackBodyAddressMax),
+  "description": zod.string().max(createLocalParkPackBodyDescriptionMax).optional()
+})
+
+export const CreateLocalParkPackResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "slug": zod.string(),
+  "address": zod.string().nullable(),
+  "offLeash": zod.boolean(),
+  "communityCreated": zod.boolean(),
+  "memberCount": zod.number(),
+  "isMember": zod.boolean()
+})
 
 
 /**

@@ -15,6 +15,7 @@ export interface Park {
   /** @nullable */
   address: string | null;
   offLeash: boolean;
+  communityCreated: boolean;
   memberCount: number;
   isMember: boolean;
 }

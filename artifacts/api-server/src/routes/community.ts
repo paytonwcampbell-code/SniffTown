@@ -3,6 +3,8 @@ import { Router, type IRouter } from "express";
 import {
   AddDogToPackParams,
   AddDogToPackResponse,
+  CreateLocalParkPackBody,
+  CreateLocalParkPackResponse,
   CreateDogBody,
   CreateDogResponse,
   ListDogsQueryParams,
@@ -31,6 +33,13 @@ type RecordValue = Record<string, unknown>;
 function bearer(req: Parameters<typeof getAccessToken>[0]): Record<string, string> {
   const token = getAccessToken(req);
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 async function jsonRows(
@@ -417,6 +426,7 @@ router.get("/parks", async (req, res) => {
         slug: String(park.slug),
         address: typeof pack?.location === "string" ? pack.location : null,
         offLeash: tags.includes("off-leash"),
+        communityCreated: tags.includes("community-created"),
         memberCount: memberships.filter(
           (membership) => String(membership.pack_id) === String(park.id),
         ).length,
@@ -433,6 +443,188 @@ router.get("/parks", async (req, res) => {
   } catch (error) {
     req.log.error({ err: error }, "Unable to list parks");
     res.status(502).json({ error: "Unable to load parks right now." });
+  }
+});
+
+router.post("/parks", async (req, res) => {
+  const body = CreateLocalParkPackBody.safeParse(req.body);
+  const token = getAccessToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Sign in to start a local park pack." });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: "Check the park name, address, and description." });
+    return;
+  }
+
+  const authHeaders = { Authorization: `Bearer ${token}` };
+  try {
+    const userResponse = await supabaseUserRequest("/auth/v1/user", {
+      headers: authHeaders,
+    });
+    if (!userResponse.ok) {
+      res.status(401).json({ error: "Your session has expired." });
+      return;
+    }
+    const user = (await userResponse.json()) as { id: string };
+    const name = body.data.name.trim();
+    const address = body.data.address.trim();
+    const description = body.data.description?.trim() || null;
+    const [existingParks, existingPacks] = await Promise.all([
+      jsonRows("/rest/v1/parks?select=id,name,metro_id&limit=100"),
+      jsonRows("/rest/v1/packs?select=id,location&is_public=eq.true&limit=100"),
+    ]);
+    const normalizedName = name.toLocaleLowerCase();
+    const normalizedAddress = address.toLocaleLowerCase();
+    const duplicate =
+      existingParks.some(
+        (park) => String(park.name).trim().toLocaleLowerCase() === normalizedName,
+      ) ||
+      existingPacks.some(
+        (pack) =>
+          typeof pack.location === "string" &&
+          pack.location.trim().toLocaleLowerCase() === normalizedAddress,
+      );
+    if (duplicate) {
+      res.status(409).json({
+        error: "A local park pack already exists for that park or address.",
+      });
+      return;
+    }
+    const metroId = existingParks.find(
+      (park) => typeof park.metro_id === "string",
+    )?.metro_id;
+    if (typeof metroId !== "string") {
+      res.status(502).json({ error: "Austin park settings are unavailable." });
+      return;
+    }
+
+    const id = randomUUID();
+    const cleanup = async () => {
+      const cleanupRequests = [
+        () =>
+          supabaseUserRequest(
+          `/rest/v1/pack_members?pack_id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(user.id)}`,
+          { method: "DELETE", headers: authHeaders },
+        ),
+        () =>
+          supabaseUserRequest(`/rest/v1/packs?id=eq.${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            headers: authHeaders,
+          }),
+        () =>
+          supabaseUserRequest(`/rest/v1/parks?id=eq.${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            headers: authHeaders,
+          }),
+      ];
+      for (const cleanupRequest of cleanupRequests) {
+        try {
+          await cleanupRequest();
+        } catch {
+          // Preserve the original provider error returned to the member.
+        }
+      }
+    };
+
+    const parkResponse = await supabaseUserRequest("/rest/v1/parks", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        id,
+        name,
+        city: "Austin",
+        state: "TX",
+        slug: `${slugify(name)}-${id.slice(0, 8)}`,
+        description:
+          description ??
+          "A community-created local park pack for Austin dogs and their people.",
+        metro_id: metroId,
+        created_by: user.id,
+      }),
+    });
+    if (!parkResponse.ok) {
+      res.status(parkResponse.status).json({
+        error: await readProviderError(parkResponse),
+      });
+      return;
+    }
+
+    const packResponse = await supabaseUserRequest("/rest/v1/packs", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        id,
+        creator_id: user.id,
+        name: `${name} Pack`,
+        location: address,
+        description:
+          description ??
+          `A community-created local dog group that meets around ${name}.`,
+        is_public: true,
+        join_method: "auto_approve",
+        discoverability: "public",
+        preview_level: "badges_counts",
+        max_members: 50,
+        show_human_names: true,
+        hide_events_until_joined: true,
+        tags: ["community-created"],
+      }),
+    });
+    if (!packResponse.ok) {
+      await cleanup();
+      res.status(packResponse.status).json({
+        error: await readProviderError(packResponse),
+      });
+      return;
+    }
+
+    const membershipResponse = await supabaseUserRequest(
+      "/rest/v1/pack_members",
+      {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({ pack_id: id, user_id: user.id }),
+      },
+    );
+    if (!membershipResponse.ok) {
+      await cleanup();
+      res.status(membershipResponse.status).json({
+        error: await readProviderError(membershipResponse),
+      });
+      return;
+    }
+
+    res.status(201).json(
+      CreateLocalParkPackResponse.parse({
+        id,
+        name,
+        city: "Austin",
+        state: "TX",
+        slug: `${slugify(name)}-${id.slice(0, 8)}`,
+        address,
+        offLeash: false,
+        communityCreated: true,
+        memberCount: 1,
+        isMember: true,
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to create local park pack");
+    res.status(502).json({ error: "Unable to start this park pack right now." });
   }
 });
 

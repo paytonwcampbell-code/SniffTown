@@ -125,6 +125,27 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Park"
+    post:
+      operationId: createLocalParkPack
+      tags: [parks]
+      summary: Start a community-created local park pack
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLocalParkPackInput"
+      responses:
+        "201":
+          description: Local park pack created and joined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Park"
+        "401":
+          description: Authentication required
+        "409":
+          description: A park pack already exists for this park
   /parks/{parkId}/membership:
     post:
       operationId: updateParkPackMembership
@@ -478,11 +499,28 @@ components:
           type: ["string", "null"]
         offLeash:
           type: boolean
+        communityCreated:
+          type: boolean
         memberCount:
           type: number
         isMember:
           type: boolean
-      required: [id, name, city, state, slug, address, offLeash, memberCount, isMember]
+      required: [id, name, city, state, slug, address, offLeash, communityCreated, memberCount, isMember]
+    CreateLocalParkPackInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        address:
+          type: string
+          minLength: 5
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 500
+      required: [name, address]
     ParkPackMembershipInput:
       type: object
       properties:

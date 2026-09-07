@@ -25,6 +25,7 @@ import type {
   ContactMessage,
   ConversationReadResult,
   ConversationSummary,
+  CreateLocalParkPackInput,
   CurrentUser,
   Dog,
   DogInput,
@@ -529,6 +530,77 @@ export function useListParks<TData = Awaited<ReturnType<typeof listParks>>, TErr
 
 
 
+
+export const getCreateLocalParkPackUrl = () => {
+
+
+
+
+  return `/api/parks`
+}
+
+/**
+ * @summary Start a community-created local park pack
+ */
+export const createLocalParkPack = async (createLocalParkPackInput: CreateLocalParkPackInput, options?: Parameters<typeof customFetch>[1]): Promise<Park> => {
+
+  return customFetch<Park>(getCreateLocalParkPackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createLocalParkPackInput)
+  }
+);}
+
+
+
+
+
+export const getCreateLocalParkPackMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLocalParkPack>>, TError,{data: BodyType<CreateLocalParkPackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLocalParkPack>>, TError,{data: BodyType<CreateLocalParkPackInput>}, TContext> => {
+
+const mutationKey = ['createLocalParkPack'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLocalParkPack>>, {data: BodyType<CreateLocalParkPackInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLocalParkPack(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLocalParkPackMutationResult = NonNullable<Awaited<ReturnType<typeof createLocalParkPack>>>
+    export type CreateLocalParkPackMutationBody = BodyType<CreateLocalParkPackInput>
+    export type CreateLocalParkPackMutationError = ErrorType<void>
+
+    /**
+ * @summary Start a community-created local park pack
+ */
+export const useCreateLocalParkPack = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLocalParkPack>>, TError,{data: BodyType<CreateLocalParkPackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLocalParkPack>>,
+        TError,
+        {data: BodyType<CreateLocalParkPackInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLocalParkPackMutationOptions(options));
+    }
 
 export const getUpdateParkPackMembershipUrl = (parkId: string,) => {
 

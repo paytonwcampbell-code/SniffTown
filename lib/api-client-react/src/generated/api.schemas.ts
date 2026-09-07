@@ -43,8 +43,24 @@ export interface Park {
   /** @nullable */
   address: string | null;
   offLeash: boolean;
+  communityCreated: boolean;
   memberCount: number;
   isMember: boolean;
+}
+
+export interface CreateLocalParkPackInput {
+  /**
+     * @minLength 3
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minLength 5
+     * @maxLength 160
+     */
+  address: string;
+  /** @maxLength 500 */
+  description?: string;
 }
 
 export type ParkPackMembershipInputAction = typeof ParkPackMembershipInputAction[keyof typeof ParkPackMembershipInputAction];

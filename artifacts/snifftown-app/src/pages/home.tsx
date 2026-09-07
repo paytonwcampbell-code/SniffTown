@@ -229,9 +229,9 @@ export default function Home() {
   const { data: dogs, isLoading: dogsLoading } = useListDogs();
   const { data: parks } = useListParks();
   const { toast } = useToast();
-  const [parkFilter, setParkFilter] = useState<"all" | "off-leash" | "other">("all");
-
   const isUserLoggedIn = !!user?.id;
+  const localParkPacks = parks?.filter((park) => !park.offLeash) ?? [];
+  const offLeashAreas = parks?.filter((park) => park.offLeash) ?? [];
 
   // Contact form state
   const [contactName, setContactName] = useState("");
@@ -387,56 +387,58 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Local Park Packs */}
+      {/* Park communities */}
       <section className="py-16 md:py-24 bg-background">
         <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto mb-10 max-w-2xl text-center">
             <Badge variant="outline" className="mb-4 bg-secondary/40">
-              Austin park communities
+              Neighborhood communities
             </Badge>
             <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
-              Find your local park pack
+              Local Park Packs
             </h2>
             <p className="mt-3 text-lg text-muted-foreground">
-              Join the community around a park you already visit. Park packs are
-              for local walks, playdates, and meetups—not private pet-care access.
+              Join neighbors around parks like Garrison Park for local walks,
+              playdates, and meetups—or start a pack for your own favorite park.
             </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-2">
-              {[
-                ["all", "All parks"],
-                ["off-leash", "Off-leash areas"],
-                ["other", "Other local parks"],
-              ].map(([value, label]) => (
-                <Button
-                  key={value}
-                  type="button"
-                  size="sm"
-                  variant={parkFilter === value ? "default" : "outline"}
-                  className="rounded-full"
-                  onClick={() =>
-                    setParkFilter(value as "all" | "off-leash" | "other")
-                  }
-                >
-                  {label}
-                </Button>
-              ))}
+            <div className="mt-6">
+              <Button asChild className="rounded-full">
+                <Link href={isUserLoggedIn ? "/pack" : "/auth"}>
+                  Start your own park pack
+                </Link>
+              </Button>
             </div>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {parks
-              ?.filter(
-                (park) =>
-                  parkFilter === "all" ||
-                  (parkFilter === "off-leash" && park.offLeash) ||
-                  (parkFilter === "other" && !park.offLeash),
-              )
-              .map((park) => (
+            {localParkPacks.map((park) => (
               <LocalParkPackCard
                 key={park.id}
                 park={park}
                 isUserLoggedIn={isUserLoggedIn}
               />
-              ))}
+            ))}
+          </div>
+
+          <div className="mx-auto mb-10 mt-20 max-w-2xl text-center">
+            <Badge variant="outline" className="mb-4 bg-secondary/40">
+              City of Austin list
+            </Badge>
+            <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
+              Austin Dog Off-Leash Areas
+            </h2>
+            <p className="mt-3 text-lg text-muted-foreground">
+              Explore the 29 current dog off-leash areas verified from the City
+              of Austin map.
+            </p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {offLeashAreas.map((park) => (
+              <LocalParkPackCard
+                key={park.id}
+                park={park}
+                isUserLoggedIn={isUserLoggedIn}
+              />
+            ))}
           </div>
         </div>
       </section>

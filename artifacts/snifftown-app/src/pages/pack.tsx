@@ -13,6 +13,7 @@ import {
   getListDogsQueryKey,
   getListIncomingPackRequestsQueryKey,
   getListParksQueryKey,
+  type Park,
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,49 @@ import { Plus, Users, Shield, MapPin, Bone, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
+
+function ParkPackRows({
+  parks,
+  isPending,
+  onToggle,
+}: {
+  parks: Park[];
+  isPending: boolean;
+  onToggle: (park: Park) => void;
+}) {
+  return (
+    <div className="grid gap-4">
+      {parks.map((park) => (
+        <Card key={park.id} className="border-border/60 hover-elevate transition-all">
+          <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-3 mb-1">
+                <h3 className="font-display font-bold text-xl">{park.name} Pack</h3>
+                {park.offLeash && <Badge variant="secondary">Off-leash area</Badge>}
+                {park.communityCreated && (
+                  <Badge variant="outline">Community-created</Badge>
+                )}
+                {park.isMember && <Badge className="border-none">Joined</Badge>}
+              </div>
+              <p className="text-sm text-muted-foreground flex items-center mt-2">
+                <MapPin className="h-4 w-4 mr-1.5 opacity-70" />
+                {park.address || `Meets around ${park.name} in ${park.city}`}
+              </p>
+            </div>
+            <Button
+              variant={park.isMember ? "outline" : "secondary"}
+              className="shrink-0 w-full sm:w-auto"
+              disabled={isPending}
+              onClick={() => onToggle(park)}
+            >
+              {isPending ? "Updating..." : park.isMember ? "Leave pack" : "Join local pack"}
+            </Button>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 export default function PackPage() {
   const [, setLocation] = useLocation();
@@ -107,6 +151,8 @@ export default function PackPage() {
   const myPackDogs = useMemo(() => {
     return allDogs?.filter(dog => dog.isInPack) || [];
   }, [allDogs]);
+  const localParkPacks = parkPacks?.filter((park) => !park.offLeash) ?? [];
+  const offLeashAreas = parkPacks?.filter((park) => park.offLeash) ?? [];
 
   // Protect route
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-pulse">Loading...</div></div>;
@@ -290,9 +336,9 @@ export default function PackPage() {
         <TabsContent value="localpacks" className="space-y-8 animate-in fade-in-50 duration-500">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="font-display text-2xl font-bold">Austin Local Park Packs</h2>
+              <h2 className="font-display text-2xl font-bold">Local Park Packs</h2>
               <p className="text-muted-foreground mt-1">
-                Join the community around parks you visit for local walks, playdates, and meetups.
+                Join Garrison Park Pack or another neighborhood park community.
               </p>
             </div>
             <Button
@@ -302,7 +348,7 @@ export default function PackPage() {
               onClick={() => setShowCreatePack((current) => !current)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Start a park pack
+              Start your own park pack
             </Button>
           </div>
 
@@ -407,49 +453,37 @@ export default function PackPage() {
               <p className="text-muted-foreground mt-1 max-w-md mx-auto">Suggest an Austin park and we’ll add its local community.</p>
             </div>
           ) : (
-            <div className="grid gap-4">
-              {parkPacks.map(park => (
-                <Card key={park.id} className="border-border/60 hover-elevate transition-all">
-                  <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-display font-bold text-xl">{park.name} Pack</h3>
-                        {park.offLeash && (
-                          <Badge variant="secondary">Off-leash area</Badge>
-                        )}
-                        {park.communityCreated && (
-                          <Badge variant="outline">Community-created</Badge>
-                        )}
-                        {park.isMember && (
-                          <Badge className="border-none">Joined</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground flex items-center mt-2">
-                        <MapPin className="h-4 w-4 mr-1.5 opacity-70" />
-                        {park.address || `Meets around ${park.name} in ${park.city}`}
-                      </p>
-                    </div>
-                    <Button
-                      variant={park.isMember ? "outline" : "secondary"}
-                      className="shrink-0 w-full sm:w-auto"
-                      disabled={updateParkMembership.isPending}
-                      onClick={() =>
-                        updateParkMembership.mutate({
-                          parkId: park.id,
-                          data: { action: park.isMember ? "leave" : "join" },
-                        })
-                      }
-                    >
-                      {updateParkMembership.isPending
-                        ? "Updating..."
-                        : park.isMember
-                          ? "Leave pack"
-                          : "Join local pack"}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+            <>
+              <ParkPackRows
+                parks={localParkPacks}
+                isPending={updateParkMembership.isPending}
+                onToggle={(park) =>
+                  updateParkMembership.mutate({
+                    parkId: park.id,
+                    data: { action: park.isMember ? "leave" : "join" },
+                  })
+                }
+              />
+
+              <div className="border-t border-border/50 pt-8">
+                <h2 className="font-display text-2xl font-bold">
+                  Austin Dog Off-Leash Areas
+                </h2>
+                <p className="text-muted-foreground mt-1">
+                  The 29 current dog off-leash areas verified from the City of Austin map.
+                </p>
+              </div>
+              <ParkPackRows
+                parks={offLeashAreas}
+                isPending={updateParkMembership.isPending}
+                onToggle={(park) =>
+                  updateParkMembership.mutate({
+                    parkId: park.id,
+                    data: { action: park.isMember ? "leave" : "join" },
+                  })
+                }
+              />
+            </>
           )}
         </TabsContent>
       </Tabs>

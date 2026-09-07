@@ -27,4 +27,6 @@ export * from './packRequestResponseInput';
 export * from './packRequestResponseInputStatus';
 export * from './packRequestResponseStatus';
 export * from './park';
+export * from './refreshSessionInput';
 export * from './sendMessageResult';
+export * from './sniffTownClientParameter';

@@ -9,9 +9,9 @@ import {
   SendMessageResponse,
 } from "@workspace/api-zod";
 import { supabaseUserRequest } from "../lib/connectors";
+import { getAccessToken } from "../lib/session-auth";
 
 const router: IRouter = Router();
-const ACCESS_COOKIE = "snifftown_access";
 
 type Row = Record<string, unknown>;
 
@@ -53,7 +53,7 @@ function privateResponse(res: { setHeader: (name: string, value: string) => void
 async function getAuthenticatedUser(
   req: Request,
 ): Promise<AuthenticatedUser | null> {
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const token = getAccessToken(req);
   if (!token) {
     return null;
   }

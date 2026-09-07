@@ -39,6 +39,7 @@ import type {
   PackRequestResponse,
   PackRequestResponseInput,
   Park,
+  RefreshSessionInput,
   SendMessageResult
 } from './api.schemas';
 
@@ -964,6 +965,78 @@ export const useSignOut = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSignOutMutationOptions(options));
+    }
+
+export const getRefreshSessionUrl = () => {
+
+
+
+
+  return `/api/auth/refresh`
+}
+
+/**
+ * Requests that explicitly opt into the mobile bearer-session representation with X-SniffTown-Client set to mobile receive refreshed tokens.
+ * @summary Refresh a native SniffTown session
+ */
+export const refreshSession = async (refreshSessionInput: RefreshSessionInput, options?: Parameters<typeof customFetch>[1]): Promise<AuthResult> => {
+
+  return customFetch<AuthResult>(getRefreshSessionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(refreshSessionInput)
+  }
+);}
+
+
+
+
+
+export const getRefreshSessionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,{data: BodyType<RefreshSessionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,{data: BodyType<RefreshSessionInput>}, TContext> => {
+
+const mutationKey = ['refreshSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshSession>>, {data: BodyType<RefreshSessionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  refreshSession(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshSessionMutationResult = NonNullable<Awaited<ReturnType<typeof refreshSession>>>
+    export type RefreshSessionMutationBody = BodyType<RefreshSessionInput>
+    export type RefreshSessionMutationError = ErrorType<void>
+
+    /**
+ * @summary Refresh a native SniffTown session
+ */
+export const useRefreshSession = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,{data: BodyType<RefreshSessionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshSession>>,
+        TError,
+        {data: BodyType<RefreshSessionInput>},
+        TContext
+      > => {
+      return useMutation(getRefreshSessionMutationOptions(options));
     }
 
 export const getGetCurrentUserUrl = () => {

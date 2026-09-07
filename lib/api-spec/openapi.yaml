@@ -186,6 +186,8 @@ paths:
       operationId: signUp
       tags: [auth]
       summary: Create a SniffTown account
+      parameters:
+        - $ref: "#/components/parameters/SniffTownClient"
       requestBody:
         required: true
         content:
@@ -206,6 +208,8 @@ paths:
       operationId: signIn
       tags: [auth]
       summary: Sign in to SniffTown
+      parameters:
+        - $ref: "#/components/parameters/SniffTownClient"
       requestBody:
         required: true
         content:
@@ -229,6 +233,31 @@ paths:
       responses:
         "204":
           description: Signed out
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      tags: [auth]
+      summary: Refresh a native SniffTown session
+      description: Requests that explicitly opt into the mobile bearer-session representation with X-SniffTown-Client set to mobile receive refreshed tokens.
+      parameters:
+        - $ref: "#/components/parameters/SniffTownClient"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshSessionInput"
+      responses:
+        "200":
+          description: Refreshed native session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "400":
+          description: Invalid refresh request
+        "401":
+          description: Invalid or expired refresh token
   /auth/me:
     get:
       operationId: getCurrentUser
@@ -346,6 +375,15 @@ paths:
         "404":
           description: Conversation not found
 components:
+  parameters:
+    SniffTownClient:
+      name: X-SniffTown-Client
+      in: header
+      required: false
+      description: Opts a request into the mobile bearer-session response representation.
+      schema:
+        type: string
+        enum: [mobile]
   schemas:
     HealthStatus:
       type: object
@@ -483,7 +521,20 @@ components:
           type: boolean
         message:
           type: string
+        accessToken:
+          type: string
+          description: Present only when X-SniffTown-Client is mobile.
+        refreshToken:
+          type: string
+          description: Present only when X-SniffTown-Client is mobile.
       required: [user, requiresEmailVerification, message]
+    RefreshSessionInput:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+      required: [refreshToken]
     CurrentUser:
       type: object
       properties:

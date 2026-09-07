@@ -11,4 +11,8 @@ export interface AuthResult {
   user: CurrentUser;
   requiresEmailVerification: boolean;
   message: string;
+  /** Present only when X-SniffTown-Client is mobile. */
+  accessToken?: string;
+  /** Present only when X-SniffTown-Client is mobile. */
+  refreshToken?: string;
 }

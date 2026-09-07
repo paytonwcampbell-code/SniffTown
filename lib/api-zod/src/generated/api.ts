@@ -155,6 +155,10 @@ export const ListPacksResponse = zod.array(ListPacksResponseItem)
 /**
  * @summary Create a SniffTown account
  */
+export const SignUpHeader = zod.object({
+  "X-SniffTown-Client": zod.enum(['mobile']).optional().describe('Opts a request into the mobile bearer-session response representation.')
+})
+
 export const signUpBodyPasswordMin = 8;
 
 
@@ -171,13 +175,19 @@ export const SignUpResponse = zod.object({
   "displayName": zod.string().nullable()
 }),
   "requiresEmailVerification": zod.boolean(),
-  "message": zod.string()
+  "message": zod.string(),
+  "accessToken": zod.string().optional().describe('Present only when X-SniffTown-Client is mobile.'),
+  "refreshToken": zod.string().optional().describe('Present only when X-SniffTown-Client is mobile.')
 })
 
 
 /**
  * @summary Sign in to SniffTown
  */
+export const SignInHeader = zod.object({
+  "X-SniffTown-Client": zod.enum(['mobile']).optional().describe('Opts a request into the mobile bearer-session response representation.')
+})
+
 export const signInBodyPasswordMin = 8;
 
 
@@ -194,7 +204,9 @@ export const SignInResponse = zod.object({
   "displayName": zod.string().nullable()
 }),
   "requiresEmailVerification": zod.boolean(),
-  "message": zod.string()
+  "message": zod.string(),
+  "accessToken": zod.string().optional().describe('Present only when X-SniffTown-Client is mobile.'),
+  "refreshToken": zod.string().optional().describe('Present only when X-SniffTown-Client is mobile.')
 })
 
 
@@ -202,6 +214,34 @@ export const SignInResponse = zod.object({
  * @summary Sign out
  */
 export const SignOutResponse = zod.void()
+
+
+/**
+ * Requests that explicitly opt into the mobile bearer-session representation with X-SniffTown-Client set to mobile receive refreshed tokens.
+ * @summary Refresh a native SniffTown session
+ */
+export const RefreshSessionHeader = zod.object({
+  "X-SniffTown-Client": zod.enum(['mobile']).optional().describe('Opts a request into the mobile bearer-session response representation.')
+})
+
+
+
+
+export const RefreshSessionBody = zod.object({
+  "refreshToken": zod.string().min(1)
+})
+
+export const RefreshSessionResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string().nullable(),
+  "email": zod.string().nullable(),
+  "displayName": zod.string().nullable()
+}),
+  "requiresEmailVerification": zod.boolean(),
+  "message": zod.string(),
+  "accessToken": zod.string().optional().describe('Present only when X-SniffTown-Client is mobile.'),
+  "refreshToken": zod.string().optional().describe('Present only when X-SniffTown-Client is mobile.')
+})
 
 
 /**

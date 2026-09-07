@@ -111,6 +111,15 @@ export interface AuthResult {
   user: CurrentUser;
   requiresEmailVerification: boolean;
   message: string;
+  /** Present only when X-SniffTown-Client is mobile. */
+  accessToken?: string;
+  /** Present only when X-SniffTown-Client is mobile. */
+  refreshToken?: string;
+}
+
+export interface RefreshSessionInput {
+  /** @minLength 1 */
+  refreshToken: string;
 }
 
 export interface ContactMessage {
@@ -192,6 +201,13 @@ export interface SendMessageResult {
 export interface ConversationReadResult {
   success: boolean;
 }
+
+export type SniffTownClientParameter = typeof SniffTownClientParameter[keyof typeof SniffTownClientParameter];
+
+
+export const SniffTownClientParameter = {
+  mobile: 'mobile',
+} as const;
 
 export type ListDogsParams = {
 parkId?: string;

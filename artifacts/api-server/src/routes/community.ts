@@ -19,14 +19,14 @@ import {
   supabaseRequest,
   supabaseUserRequest,
 } from "../lib/connectors";
+import { getAccessToken } from "../lib/session-auth";
 
 const router: IRouter = Router();
-const ACCESS_COOKIE = "snifftown_access";
 
 type RecordValue = Record<string, unknown>;
 
-function bearer(req: { cookies?: Record<string, unknown> }): Record<string, string> {
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+function bearer(req: Parameters<typeof getAccessToken>[0]): Record<string, string> {
+  const token = getAccessToken(req);
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -86,10 +86,13 @@ router.get("/dogs", async (req, res) => {
         typeof profile.full_name === "string" ? profile.full_name : null,
       ]),
     );
-    const currentUserId =
-      typeof req.cookies?.snifftown_user_id === "string"
-        ? req.cookies.snifftown_user_id
-        : null;
+    const currentUserResponse = authHeaders.Authorization
+      ? await supabaseUserRequest("/auth/v1/user", { headers: authHeaders })
+      : null;
+    const currentUser = currentUserResponse?.ok
+      ? ((await currentUserResponse.json()) as { id?: unknown })
+      : null;
+    const currentUserId = typeof currentUser?.id === "string" ? currentUser.id : null;
     const familiarDogIds = new Set(
       currentUserId
         ? familiarRows.map((row) => String(row.marked_dog_id))
@@ -123,7 +126,7 @@ router.get("/dogs", async (req, res) => {
 
 router.post("/dogs", async (req, res) => {
   const parsed = CreateDogBody.safeParse(req.body);
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const token = getAccessToken(req);
   if (!token) {
     res.status(401).json({ error: "Sign in before adding your dog." });
     return;
@@ -182,7 +185,7 @@ router.post("/dogs", async (req, res) => {
 });
 
 router.get("/dogs/mine", async (req, res) => {
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const token = getAccessToken(req);
   if (!token) {
     res.status(401).json({ error: "Sign in to view your dog." });
     return;
@@ -231,7 +234,7 @@ router.get("/dogs/mine", async (req, res) => {
 
 router.post("/dogs/:dogId/pack", async (req, res) => {
   const params = AddDogToPackParams.safeParse(req.params);
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const token = getAccessToken(req);
   if (!token) {
     res.status(401).json({ error: "Sign in before building your pack." });
     return;
@@ -299,7 +302,7 @@ router.post("/dogs/:dogId/pack", async (req, res) => {
 });
 
 router.get("/pack-requests/incoming", async (req, res) => {
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const token = getAccessToken(req);
   if (!token) {
     res.status(401).json({ error: "Sign in to view match interests." });
     return;
@@ -339,7 +342,7 @@ router.get("/pack-requests/incoming", async (req, res) => {
 });
 
 router.post("/pack-requests/:requestId/response", async (req, res) => {
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const token = getAccessToken(req);
   const params = RespondToPackRequestParams.safeParse(req.params);
   const body = RespondToPackRequestBody.safeParse(req.body);
   if (!token) {

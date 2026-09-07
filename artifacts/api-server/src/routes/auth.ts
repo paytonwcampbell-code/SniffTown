@@ -11,6 +11,7 @@ import {
   supabaseRequest,
   supabaseUserRequest,
 } from "../lib/connectors";
+import { getAccessToken, isMobileClient } from "../lib/session-auth";
 
 const router: IRouter = Router();
 const ACCESS_COOKIE = "snifftown_access";
@@ -85,6 +86,14 @@ function toCurrentUser(user?: SupabaseUser) {
   };
 }
 
+function mobileTokens(req: Parameters<typeof isMobileClient>[0], auth: SupabaseAuthResult) {
+  if (!isMobileClient(req)) return {};
+  return {
+    ...(auth.access_token ? { accessToken: auth.access_token } : {}),
+    ...(auth.refresh_token ? { refreshToken: auth.refresh_token } : {}),
+  };
+}
+
 router.post("/auth/signup", async (req, res) => {
   const parsed = SignUpBody.safeParse(req.body);
   if (!parsed.success) {
@@ -111,6 +120,7 @@ router.post("/auth/signup", async (req, res) => {
     message: auth.access_token
       ? "Your SniffTown account is ready."
       : "Check your email to verify your SniffTown account.",
+      ...mobileTokens(req, auth),
   });
   res.status(201).json(result);
 });
@@ -143,12 +153,13 @@ router.post("/auth/signin", async (req, res) => {
       user: toCurrentUser(auth.user),
       requiresEmailVerification: false,
       message: "Welcome back to SniffTown.",
+      ...mobileTokens(req, auth),
     }),
   );
 });
 
 router.post("/auth/signout", async (req, res) => {
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const token = getAccessToken(req);
   if (token) {
     await supabaseUserRequest("/auth/v1/logout", {
       method: "POST",
@@ -159,8 +170,49 @@ router.post("/auth/signout", async (req, res) => {
   res.status(204).send();
 });
 
+router.post("/auth/refresh", async (req, res) => {
+  if (!isMobileClient(req)) {
+    res.status(400).json({ error: "Native session refresh requires the mobile client header." });
+    return;
+  }
+  const refreshToken = typeof req.body?.refreshToken === "string"
+    ? req.body.refreshToken.trim()
+    : "";
+  if (!refreshToken) {
+    res.status(400).json({ error: "A refresh token is required." });
+    return;
+  }
+
+  const response = await supabaseRequest("/auth/v1/token?grant_type=refresh_token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!response.ok) {
+    res.status(response.status === 400 ? 401 : response.status).json({
+      error: await readProviderError(response),
+    });
+    return;
+  }
+
+  const auth = (await response.json()) as SupabaseAuthResult;
+  if (!auth.access_token || !auth.refresh_token) {
+    res.status(401).json({ error: "Unable to refresh your session." });
+    return;
+  }
+  setSessionCookies(res, auth);
+  res.json(
+    SignInResponse.parse({
+      user: toCurrentUser(auth.user),
+      requiresEmailVerification: false,
+      message: "Your SniffTown session has been refreshed.",
+      ...mobileTokens(req, auth),
+    }),
+  );
+});
+
 router.get("/auth/me", async (req, res) => {
-  const token = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const token = getAccessToken(req);
   if (!token) {
     res.json(
       GetCurrentUserResponse.parse({

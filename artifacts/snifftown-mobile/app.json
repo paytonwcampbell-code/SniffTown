@@ -9,14 +9,23 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.snifftown.app"
+      "bundleIdentifier": "com.snifftown.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "SniffTown uses your location while you browse to show dogs within your chosen distance. Your exact location is never shown to other members."
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SniffTown uses your location while you browse to show dogs within your chosen distance. Your exact location is never shown to other members."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

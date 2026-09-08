@@ -15,6 +15,8 @@ import {
   UpdateParkPackMembershipBody,
   UpdateParkPackMembershipParams,
   UpdateParkPackMembershipResponse,
+  UpdateDogLocationBody,
+  UpdateDogLocationResponse,
   RespondToPackRequestBody,
   RespondToPackRequestParams,
   RespondToPackRequestResponse,
@@ -40,6 +42,21 @@ function slugify(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function coordinate(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
+  return null;
+}
+
+function distanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  const dLat = radians(lat2 - lat1);
+  const dLon = radians(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 async function jsonRows(
@@ -83,6 +100,17 @@ router.get("/dogs", async (req, res) => {
 
   try {
     const authHeaders = bearer(req);
+    const currentUserResponse = authHeaders.Authorization
+      ? await supabaseUserRequest("/auth/v1/user", { headers: authHeaders })
+      : null;
+    const currentUser = currentUserResponse?.ok
+      ? ((await currentUserResponse.json()) as { id?: unknown })
+      : null;
+    const currentUserId = typeof currentUser?.id === "string" ? currentUser.id : null;
+    if (parsed.data.nearby && !currentUserId) {
+      res.status(401).json({ error: "Sign in to find dogs near you." });
+      return;
+    }
     const [dogs, profiles, familiarRows] = await Promise.all([
       rpcRows("get_dogs_for_matching", authHeaders),
       jsonRows("/rest/v1/profiles?select=id,full_name", authHeaders),
@@ -98,20 +126,37 @@ router.get("/dogs", async (req, res) => {
         typeof profile.full_name === "string" ? profile.full_name : null,
       ]),
     );
-    const currentUserResponse = authHeaders.Authorization
-      ? await supabaseUserRequest("/auth/v1/user", { headers: authHeaders })
-      : null;
-    const currentUser = currentUserResponse?.ok
-      ? ((await currentUserResponse.json()) as { id?: unknown })
-      : null;
-    const currentUserId = typeof currentUser?.id === "string" ? currentUser.id : null;
     const familiarDogIds = new Set(
       currentUserId
         ? familiarRows.map((row) => String(row.marked_dog_id))
         : [],
     );
 
-    const result = dogs.map((dog) => ({
+    let origin: { latitude: number; longitude: number } | null = null;
+    if (parsed.data.nearby && currentUserId) {
+      const ownDogs = await jsonRows(
+        `/rest/v1/dogs?select=latitude,longitude&user_id=eq.${encodeURIComponent(currentUserId)}&order=updated_at.desc&limit=1`,
+        authHeaders,
+      );
+      const latitude = coordinate(ownDogs[0]?.latitude);
+      const longitude = coordinate(ownDogs[0]?.longitude);
+      if (latitude === null || longitude === null) {
+        res.status(409).json({ error: "Turn on nearby discovery before searching by distance." });
+        return;
+      }
+      origin = { latitude, longitude };
+    }
+    const radius = parsed.data.radiusMiles ?? 2;
+    const result = dogs.flatMap((dog) => {
+      const latitude = coordinate(dog.latitude);
+      const longitude = coordinate(dog.longitude);
+      const exactDistance = origin && latitude !== null && longitude !== null
+        ? distanceMiles(origin.latitude, origin.longitude, latitude, longitude)
+        : null;
+      if (origin && (String(dog.user_id) === currentUserId || exactDistance === null || exactDistance > radius)) {
+        return [];
+      }
+      return [{
       id: String(dog.id),
       ownerId: String(dog.user_id),
       name: String(dog.name ?? "Neighborhood dog"),
@@ -128,7 +173,9 @@ router.get("/dogs", async (req, res) => {
         : [],
       parkId: null,
       isInPack: familiarDogIds.has(String(dog.id)),
-    }));
+      distanceMiles: exactDistance === null ? null : Math.max(0.5, Math.round(exactDistance * 2) / 2),
+    }];
+    });
     res.json(ListDogsResponse.parse(result));
   } catch (error) {
     req.log.error({ err: error }, "Unable to list dogs");
@@ -192,6 +239,7 @@ router.post("/dogs", async (req, res) => {
         : [],
       parkId: parsed.data.parkId ?? null,
       isInPack: false,
+      distanceMiles: null,
     }),
   );
 });
@@ -240,8 +288,59 @@ router.get("/dogs/mine", async (req, res) => {
         : [],
       parkId: null,
       isInPack: false,
+      distanceMiles: null,
     }),
   );
+});
+
+router.put("/dogs/location", async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  const parsed = UpdateDogLocationBody.safeParse(req.body);
+  const token = getAccessToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Sign in to manage nearby discovery." });
+    return;
+  }
+  if (!parsed.success || (parsed.data.enabled && (parsed.data.latitude === undefined || parsed.data.longitude === undefined))) {
+    res.status(400).json({ error: "A valid device location is required to turn on nearby discovery." });
+    return;
+  }
+  const authHeaders = { Authorization: `Bearer ${token}` };
+  const userResponse = await supabaseUserRequest("/auth/v1/user", { headers: authHeaders });
+  if (!userResponse.ok) {
+    res.status(401).json({ error: "Your session has expired." });
+    return;
+  }
+  const user = (await userResponse.json()) as { id: string };
+  const dogs = await jsonRows(
+    `/rest/v1/dogs?select=id&user_id=eq.${encodeURIComponent(user.id)}&order=updated_at.desc&limit=1`,
+    authHeaders,
+  );
+  const dog = dogs[0];
+  if (!dog) {
+    res.status(404).json({ error: "Add your dog before turning on nearby discovery." });
+    return;
+  }
+  const response = await supabaseUserRequest(
+    `/rest/v1/dogs?id=eq.${encodeURIComponent(String(dog.id))}&user_id=eq.${encodeURIComponent(user.id)}`,
+    {
+      method: "PATCH",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        latitude: parsed.data.enabled ? parsed.data.latitude : null,
+        longitude: parsed.data.enabled ? parsed.data.longitude : null,
+      }),
+    },
+  );
+  if (!response.ok) {
+    res.status(response.status).json({ error: await readProviderError(response) });
+    return;
+  }
+  res.json(UpdateDogLocationResponse.parse({ enabled: parsed.data.enabled }));
 });
 
 router.post("/dogs/:dogId/pack", async (req, res) => {

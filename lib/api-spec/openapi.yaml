@@ -47,6 +47,19 @@ paths:
           required: false
           schema:
             type: string
+        - name: nearby
+          in: query
+          required: false
+          description: Return only location-sharing dogs within the signed-in member's radius.
+          schema:
+            type: boolean
+        - name: radiusMiles
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 1
+            maximum: 25
       responses:
         "200":
           description: Nearby dogs
@@ -75,6 +88,28 @@ paths:
                 $ref: "#/components/schemas/Dog"
         "401":
           description: Authentication required
+  /dogs/location:
+    put:
+      operationId: updateDogLocation
+      tags: [dogs]
+      summary: Enable, refresh, or disable nearby discovery for the signed-in member's dog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DogLocationInput"
+      responses:
+        "200":
+          description: Nearby discovery preference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DogLocationStatus"
+        "401":
+          description: Authentication required
+        "404":
+          description: No dog profile found
   /dogs/mine:
     get:
       operationId: getMyDog
@@ -464,7 +499,30 @@ components:
           type: ["string", "null"]
         isInPack:
           type: boolean
-      required: [id, ownerId, name, ownerName, description, photoUrl, temperament, parkId, isInPack]
+        distanceMiles:
+          type: ["number", "null"]
+          description: Approximate distance in half-mile increments; exact coordinates are never returned.
+      required: [id, ownerId, name, ownerName, description, photoUrl, temperament, parkId, isInPack, distanceMiles]
+    DogLocationInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+      required: [enabled]
+    DogLocationStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required: [enabled]
     DogInput:
       type: object
       properties:

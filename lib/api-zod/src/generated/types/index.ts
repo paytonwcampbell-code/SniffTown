@@ -15,6 +15,8 @@ export * from './createLocalParkPackInput';
 export * from './currentUser';
 export * from './dog';
 export * from './dogInput';
+export * from './dogLocationInput';
+export * from './dogLocationStatus';
 export * from './healthStatus';
 export * from './incomingPackRequest';
 export * from './listDogsParams';

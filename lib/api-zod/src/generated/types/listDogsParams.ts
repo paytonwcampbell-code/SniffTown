@@ -8,4 +8,13 @@
 
 export type ListDogsParams = {
 parkId?: string;
+/**
+ * Return only location-sharing dogs within the signed-in member's radius.
+ */
+nearby?: boolean;
+/**
+ * @minimum 1
+ * @maximum 25
+ */
+radiusMiles?: number;
 };

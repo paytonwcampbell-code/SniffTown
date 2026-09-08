@@ -29,6 +29,8 @@ import type {
   CurrentUser,
   Dog,
   DogInput,
+  DogLocationInput,
+  DogLocationStatus,
   HealthStatus,
   IncomingPackRequest,
   ListDogsParams,
@@ -304,6 +306,77 @@ export const useCreateDog = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateDogMutationOptions(options));
+    }
+
+export const getUpdateDogLocationUrl = () => {
+
+
+
+
+  return `/api/dogs/location`
+}
+
+/**
+ * @summary Enable, refresh, or disable nearby discovery for the signed-in member's dog
+ */
+export const updateDogLocation = async (dogLocationInput: DogLocationInput, options?: Parameters<typeof customFetch>[1]): Promise<DogLocationStatus> => {
+
+  return customFetch<DogLocationStatus>(getUpdateDogLocationUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dogLocationInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateDogLocationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDogLocation>>, TError,{data: BodyType<DogLocationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDogLocation>>, TError,{data: BodyType<DogLocationInput>}, TContext> => {
+
+const mutationKey = ['updateDogLocation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDogLocation>>, {data: BodyType<DogLocationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateDogLocation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDogLocationMutationResult = NonNullable<Awaited<ReturnType<typeof updateDogLocation>>>
+    export type UpdateDogLocationMutationBody = BodyType<DogLocationInput>
+    export type UpdateDogLocationMutationError = ErrorType<void>
+
+    /**
+ * @summary Enable, refresh, or disable nearby discovery for the signed-in member's dog
+ */
+export const useUpdateDogLocation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDogLocation>>, TError,{data: BodyType<DogLocationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDogLocation>>,
+        TError,
+        {data: BodyType<DogLocationInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateDogLocationMutationOptions(options));
     }
 
 export const getGetMyDogUrl = () => {

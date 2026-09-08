@@ -20,4 +20,9 @@ export interface Dog {
   /** @nullable */
   parkId: string | null;
   isInPack: boolean;
+  /**
+     * Approximate distance in half-mile increments; exact coordinates are never returned.
+     * @nullable
+     */
+  distanceMiles: number | null;
 }

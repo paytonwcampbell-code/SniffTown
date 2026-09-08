@@ -23,6 +23,29 @@ export interface Dog {
   /** @nullable */
   parkId: string | null;
   isInPack: boolean;
+  /**
+     * Approximate distance in half-mile increments; exact coordinates are never returned.
+     * @nullable
+     */
+  distanceMiles: number | null;
+}
+
+export interface DogLocationInput {
+  enabled: boolean;
+  /**
+     * @minimum -90
+     * @maximum 90
+     */
+  latitude?: number;
+  /**
+     * @minimum -180
+     * @maximum 180
+     */
+  longitude?: number;
+}
+
+export interface DogLocationStatus {
+  enabled: boolean;
 }
 
 export interface DogInput {
@@ -248,5 +271,14 @@ export const SniffTownClientParameter = {
 
 export type ListDogsParams = {
 parkId?: string;
+/**
+ * Return only location-sharing dogs within the signed-in member's radius.
+ */
+nearby?: boolean;
+/**
+ * @minimum 1
+ * @maximum 25
+ */
+radiusMiles?: number;
 };
 

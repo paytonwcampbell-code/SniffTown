@@ -20,8 +20,14 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List nearby dogs
  */
+export const listDogsQueryRadiusMilesMax = 25;
+
+
+
 export const ListDogsQueryParams = zod.object({
-  "parkId": zod.coerce.string().optional()
+  "parkId": zod.coerce.string().optional(),
+  "nearby": zod.coerce.boolean().optional().describe('Return only location-sharing dogs within the signed-in member\'s radius.'),
+  "radiusMiles": zod.coerce.number().min(1).max(listDogsQueryRadiusMilesMax).optional()
 })
 
 export const ListDogsResponseItem = zod.object({
@@ -33,7 +39,8 @@ export const ListDogsResponseItem = zod.object({
   "photoUrl": zod.string().nullable(),
   "temperament": zod.array(zod.string()),
   "parkId": zod.string().nullable(),
-  "isInPack": zod.boolean()
+  "isInPack": zod.boolean(),
+  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.')
 })
 export const ListDogsResponse = zod.array(ListDogsResponseItem)
 
@@ -61,7 +68,30 @@ export const CreateDogResponse = zod.object({
   "photoUrl": zod.string().nullable(),
   "temperament": zod.array(zod.string()),
   "parkId": zod.string().nullable(),
-  "isInPack": zod.boolean()
+  "isInPack": zod.boolean(),
+  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.')
+})
+
+
+/**
+ * @summary Enable, refresh, or disable nearby discovery for the signed-in member's dog
+ */
+export const updateDogLocationBodyLatitudeMin = -90;
+export const updateDogLocationBodyLatitudeMax = 90;
+
+export const updateDogLocationBodyLongitudeMin = -180;
+export const updateDogLocationBodyLongitudeMax = 180;
+
+
+
+export const UpdateDogLocationBody = zod.object({
+  "enabled": zod.boolean(),
+  "latitude": zod.number().min(updateDogLocationBodyLatitudeMin).max(updateDogLocationBodyLatitudeMax).optional(),
+  "longitude": zod.number().min(updateDogLocationBodyLongitudeMin).max(updateDogLocationBodyLongitudeMax).optional()
+})
+
+export const UpdateDogLocationResponse = zod.object({
+  "enabled": zod.boolean()
 })
 
 
@@ -77,7 +107,8 @@ export const GetMyDogResponse = zod.object({
   "photoUrl": zod.string().nullable(),
   "temperament": zod.array(zod.string()),
   "parkId": zod.string().nullable(),
-  "isInPack": zod.boolean()
+  "isInPack": zod.boolean(),
+  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.')
 })
 
 

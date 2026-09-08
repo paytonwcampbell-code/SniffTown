@@ -3,3 +3,4 @@
 - [Relationship model](relationship-model.md) — interests become matches; park packs are public/local, while trusted circles remain private care relationships.
 - [Web and native sessions](web-native-sessions.md) — web keeps HTTP-only cookies; native uses rotated bearer tokens in secure device storage against the same API.
 - [Mobile proximity privacy](mobile-proximity-privacy.md) — precise location is an opt-in native-app capability; web stays location-neutral and peers see only coarse distance.
+- [React Query bundling](react-query-bundling.md) — web production builds must dedupe React Query or workspace-generated hooks lose the app provider.

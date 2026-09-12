@@ -1,0 +1,245 @@
+Update SniffTown profiles so users can more clearly describe:
+
+1. What they are looking for
+2. What their dog is like
+3. What kinds of dogs their dog tends to do well with
+
+The goal is to improve matching while keeping the profile setup simple and fast.
+
+CORE MATCHING PRINCIPLE
+
+Prioritize:
+
+* Proximity
+* Shared intent
+* Dog compatibility
+
+Do not make this feel like a long dating-app questionnaire.
+
+---
+
+SECTION 1: WHAT ARE YOU LOOKING FOR?
+
+Allow users to select one or more:
+
+* Dog walk
+* Playdate
+* Park meetup
+* Dog-friendly date
+* Friendship / meet new people
+* Regular walking buddy
+* Dog sitting swap / trade-off
+* Occasional drop-off help
+* Other
+
+Allow multiple selections.
+
+Optional short note:
+
+“Anything else you're looking for?”
+
+Example:
+“Would love another dog owner nearby for evening walks and occasional weekend playdates.”
+
+---
+
+SECTION 2: ABOUT YOUR DOG
+
+Use simple selectable traits.
+
+Temperament:
+
+* Friendly
+* Playful
+* Calm
+* Energetic
+* Shy
+* Independent
+* Gentle
+* Protective
+* Excitable
+* Selective with dogs
+
+Energy level:
+
+* Low
+* Medium
+* High
+
+Play style:
+
+* Likes to chase
+* Likes wrestling
+* Gentle play
+* Fetch
+* Mostly likes walking together
+* Prefers people to dogs
+* Still learning social skills
+
+Dog size:
+
+* Small
+* Medium
+* Large
+* Extra large
+
+---
+
+SECTION 3: DOG COMPATIBILITY
+
+Add:
+
+“My dog usually does well with…”
+
+Selectable options:
+
+* Small dogs
+* Medium dogs
+* Large dogs
+* Puppies
+* Adult dogs
+* Senior dogs
+* Calm dogs
+* High-energy dogs
+* Male dogs
+* Female dogs
+* Most dogs
+* Depends on the dog
+
+Also allow:
+
+“My dog may NOT be a good fit with…”
+
+Selectable options:
+
+* Small dogs
+* Large dogs
+* Puppies
+* High-energy dogs
+* Male dogs
+* Female dogs
+* Dogs that play rough
+* No major restrictions
+
+Keep this optional.
+
+---
+
+SECTION 4: WALK / MEETUP PREFERENCES
+
+Add optional preferences:
+
+Typical availability:
+
+* Morning
+* Midday
+* Afternoon
+* Evening
+* Weekdays
+* Weekends
+
+Preferred meetup type:
+
+* Neighborhood walk
+* Park walk
+* Dog park
+* Trail / hike
+* Patio / dog-friendly social meetup
+
+Preferred distance:
+Use location/proximity rather than making this overly complicated.
+
+---
+
+SECTION 5: PET-SITTING / TRADE-OFF INTEREST
+
+If user selects:
+
+* Dog sitting swap
+* Occasional drop-off help
+
+Show an optional sub-section:
+
+Comfortable with:
+
+* Watching another dog for a few hours
+* Half day
+* Full day
+* Overnight
+* Trading dog-sitting favors
+* Paid pet-sitting referrals
+
+This should be optional and should NOT dominate the profile.
+
+---
+
+PROFILE DISPLAY
+
+Do not dump every field onto the profile.
+
+Show a clean summary such as:
+
+Looking for:
+Dog walks · Playdates · Friends
+
+Frank:
+Friendly · Playful · Medium energy
+
+Usually does well with:
+Medium/large dogs · Calm or playful dogs
+
+Usually walks:
+Evenings · Weekends
+
+---
+
+MATCHING / DISCOVERY
+
+Use these fields to improve discovery.
+
+Prioritize dogs/users who:
+
+1. Are geographically nearby
+2. Share at least one meetup intent
+3. Have compatible dog preferences
+4. Have overlapping availability
+
+Do not create a complicated compatibility score yet.
+
+Instead, surface simple explanations such as:
+
+“Nearby + both looking for evening walks”
+
+or
+
+“Good fit for playdates”
+
+or
+
+“Both interested in dog-sitting swaps”
+
+---
+
+IMPORTANT UX PRINCIPLE
+
+Keep onboarding simple.
+
+Use:
+
+* chips
+* checkboxes
+* multi-select buttons
+* short optional text fields
+
+Avoid:
+
+* long forms
+* required essays
+* too many screens
+* complicated scoring
+
+Users should be able to complete the profile quickly and refine it later.
+
+The goal is to help someone quickly answer:
+
+“Would I actually want to meet this person and dog?”

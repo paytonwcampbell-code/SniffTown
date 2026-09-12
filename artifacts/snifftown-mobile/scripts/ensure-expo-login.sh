@@ -1,6 +1,13 @@
 #!/bin/sh
 set -u
 
+# Fresh workspaces may not have Expo's state directory yet. create-launch
+# writes state atomically but does not create the parent directory.
+if ! mkdir -p "$HOME/.expo"; then
+  echo "Unable to create Expo's state directory; cannot authenticate." >&2
+  exit 1
+fi
+
 attempt=1
 max_attempts=5
 

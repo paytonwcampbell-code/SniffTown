@@ -5,12 +5,43 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DogInputAvailabilityItem } from './dogInputAvailabilityItem';
+import type { DogInputCompatibleWithItem } from './dogInputCompatibleWithItem';
+import type { DogInputDogSex } from './dogInputDogSex';
+import type { DogInputEnergyLevel } from './dogInputEnergyLevel';
+import type { DogInputLookingForItem } from './dogInputLookingForItem';
+import type { DogInputMeetupPreferencesItem } from './dogInputMeetupPreferencesItem';
+import type { DogInputNotGoodFitWithItem } from './dogInputNotGoodFitWithItem';
+import type { DogInputPlayStylesItem } from './dogInputPlayStylesItem';
+import type { DogInputSittingInterestsItem } from './dogInputSittingInterestsItem';
+import type { DogInputSize } from './dogInputSize';
 
 export interface DogInput {
   /** @minLength 1 */
   name: string;
-  description?: string;
-  photoUrl?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  photoUrl?: string | null;
+  /** @nullable */
+  dogSex?: DogInputDogSex;
+  /** @nullable */
+  size?: DogInputSize;
   temperament?: string[];
-  parkId?: string;
+  lookingFor?: DogInputLookingForItem[];
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  lookingForNote?: string | null;
+  /** @nullable */
+  energyLevel?: DogInputEnergyLevel;
+  playStyles?: DogInputPlayStylesItem[];
+  compatibleWith?: DogInputCompatibleWithItem[];
+  notGoodFitWith?: DogInputNotGoodFitWithItem[];
+  availability?: DogInputAvailabilityItem[];
+  meetupPreferences?: DogInputMeetupPreferencesItem[];
+  sittingInterests?: DogInputSittingInterestsItem[];
+  /** @nullable */
+  parkId?: string | null;
 }

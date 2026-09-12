@@ -126,6 +126,27 @@ paths:
           description: Authentication required
         "404":
           description: No dog profile found
+    put:
+      operationId: updateMyDog
+      tags: [dogs]
+      summary: Update the signed-in member's primary dog profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DogInput"
+      responses:
+        "200":
+          description: Updated dog profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "401":
+          description: Authentication required
+        "404":
+          description: No dog profile found
   /dogs/{dogId}/pack:
     post:
       operationId: addDogToPack
@@ -491,10 +512,103 @@ components:
           type: ["string", "null"]
         photoUrl:
           type: ["string", "null"]
+        dogSex:
+          type: ["string", "null"]
+          enum: [male, female, unknown, null]
+        size:
+          type: ["string", "null"]
+          enum: [Small, Medium, Large, "Extra large", null]
         temperament:
           type: array
           items:
             type: string
+        lookingFor:
+          type: array
+          items:
+            type: string
+            enum:
+              - dog_walk
+              - playdate
+              - park_meetup
+              - dog_friendly_date
+              - friendship
+              - regular_walking_buddy
+              - dog_sitting_swap
+              - occasional_dropoff_help
+              - other
+        lookingForNote:
+          type: ["string", "null"]
+        energyLevel:
+          type: ["string", "null"]
+          enum: [low, medium, high, null]
+        playStyles:
+          type: array
+          items:
+            type: string
+            enum:
+              - likes_to_chase
+              - likes_wrestling
+              - gentle_play
+              - fetch
+              - mostly_walking_together
+              - prefers_people_to_dogs
+              - learning_social_skills
+        compatibleWith:
+          type: array
+          items:
+            type: string
+            enum:
+              - small_dogs
+              - medium_dogs
+              - large_dogs
+              - puppies
+              - adult_dogs
+              - senior_dogs
+              - calm_dogs
+              - high_energy_dogs
+              - male_dogs
+              - female_dogs
+              - most_dogs
+              - depends_on_the_dog
+        notGoodFitWith:
+          type: array
+          items:
+            type: string
+            enum:
+              - small_dogs
+              - large_dogs
+              - puppies
+              - high_energy_dogs
+              - male_dogs
+              - female_dogs
+              - rough_play
+              - no_major_restrictions
+        availability:
+          type: array
+          items:
+            type: string
+            enum: [morning, midday, afternoon, evening, weekdays, weekends]
+        meetupPreferences:
+          type: array
+          items:
+            type: string
+            enum:
+              - neighborhood_walk
+              - park_walk
+              - dog_park
+              - trail_hike
+              - patio_social
+        sittingInterests:
+          type: array
+          items:
+            type: string
+            enum:
+              - a_few_hours
+              - half_day
+              - full_day
+              - overnight
+              - trade_sitting_favors
+              - paid_sitting_referrals
         parkId:
           type: ["string", "null"]
         isInPack:
@@ -502,7 +616,10 @@ components:
         distanceMiles:
           type: ["number", "null"]
           description: Approximate distance in half-mile increments; exact coordinates are never returned.
-      required: [id, ownerId, name, ownerName, description, photoUrl, temperament, parkId, isInPack, distanceMiles]
+        matchExplanation:
+          type: ["string", "null"]
+          description: A short explanation of why this dog is surfaced; never a numeric compatibility score.
+      required: [id, ownerId, name, ownerName, description, photoUrl, dogSex, size, temperament, lookingFor, lookingForNote, energyLevel, playStyles, compatibleWith, notGoodFitWith, availability, meetupPreferences, sittingInterests, parkId, isInPack, distanceMiles, matchExplanation]
     DogLocationInput:
       type: object
       properties:
@@ -530,15 +647,109 @@ components:
           type: string
           minLength: 1
         description:
-          type: string
+          type: ["string", "null"]
         photoUrl:
-          type: string
+          type: ["string", "null"]
+        dogSex:
+          type: ["string", "null"]
+          enum: [male, female, unknown, null]
+        size:
+          type: ["string", "null"]
+          enum: [Small, Medium, Large, "Extra large", null]
         temperament:
           type: array
           items:
             type: string
+        lookingFor:
+          type: array
+          items:
+            type: string
+            enum:
+              - dog_walk
+              - playdate
+              - park_meetup
+              - dog_friendly_date
+              - friendship
+              - regular_walking_buddy
+              - dog_sitting_swap
+              - occasional_dropoff_help
+              - other
+        lookingForNote:
+          type: ["string", "null"]
+          maxLength: 240
+        energyLevel:
+          type: ["string", "null"]
+          enum: [low, medium, high, null]
+        playStyles:
+          type: array
+          items:
+            type: string
+            enum:
+              - likes_to_chase
+              - likes_wrestling
+              - gentle_play
+              - fetch
+              - mostly_walking_together
+              - prefers_people_to_dogs
+              - learning_social_skills
+        compatibleWith:
+          type: array
+          items:
+            type: string
+            enum:
+              - small_dogs
+              - medium_dogs
+              - large_dogs
+              - puppies
+              - adult_dogs
+              - senior_dogs
+              - calm_dogs
+              - high_energy_dogs
+              - male_dogs
+              - female_dogs
+              - most_dogs
+              - depends_on_the_dog
+        notGoodFitWith:
+          type: array
+          items:
+            type: string
+            enum:
+              - small_dogs
+              - large_dogs
+              - puppies
+              - high_energy_dogs
+              - male_dogs
+              - female_dogs
+              - rough_play
+              - no_major_restrictions
+        availability:
+          type: array
+          items:
+            type: string
+            enum: [morning, midday, afternoon, evening, weekdays, weekends]
+        meetupPreferences:
+          type: array
+          items:
+            type: string
+            enum:
+              - neighborhood_walk
+              - park_walk
+              - dog_park
+              - trail_hike
+              - patio_social
+        sittingInterests:
+          type: array
+          items:
+            type: string
+            enum:
+              - a_few_hours
+              - half_day
+              - full_day
+              - overnight
+              - trade_sitting_favors
+              - paid_sitting_referrals
         parkId:
-          type: string
+          type: ["string", "null"]
       required: [name]
     Park:
       type: object

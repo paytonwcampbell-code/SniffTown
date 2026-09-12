@@ -37,10 +37,22 @@ export const ListDogsResponseItem = zod.object({
   "ownerName": zod.string().nullable(),
   "description": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "dogSex": zod.union([zod.literal('male'),zod.literal('female'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "size": zod.union([zod.literal('Small'),zod.literal('Medium'),zod.literal('Large'),zod.literal('Extra large'),zod.literal(null)]).nullable(),
   "temperament": zod.array(zod.string()),
+  "lookingFor": zod.array(zod.enum(['dog_walk', 'playdate', 'park_meetup', 'dog_friendly_date', 'friendship', 'regular_walking_buddy', 'dog_sitting_swap', 'occasional_dropoff_help', 'other'])),
+  "lookingForNote": zod.string().nullable(),
+  "energyLevel": zod.union([zod.literal('low'),zod.literal('medium'),zod.literal('high'),zod.literal(null)]).nullable(),
+  "playStyles": zod.array(zod.enum(['likes_to_chase', 'likes_wrestling', 'gentle_play', 'fetch', 'mostly_walking_together', 'prefers_people_to_dogs', 'learning_social_skills'])),
+  "compatibleWith": zod.array(zod.enum(['small_dogs', 'medium_dogs', 'large_dogs', 'puppies', 'adult_dogs', 'senior_dogs', 'calm_dogs', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'most_dogs', 'depends_on_the_dog'])),
+  "notGoodFitWith": zod.array(zod.enum(['small_dogs', 'large_dogs', 'puppies', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'rough_play', 'no_major_restrictions'])),
+  "availability": zod.array(zod.enum(['morning', 'midday', 'afternoon', 'evening', 'weekdays', 'weekends'])),
+  "meetupPreferences": zod.array(zod.enum(['neighborhood_walk', 'park_walk', 'dog_park', 'trail_hike', 'patio_social'])),
+  "sittingInterests": zod.array(zod.enum(['a_few_hours', 'half_day', 'full_day', 'overnight', 'trade_sitting_favors', 'paid_sitting_referrals'])),
   "parkId": zod.string().nullable(),
   "isInPack": zod.boolean(),
-  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.')
+  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.'),
+  "matchExplanation": zod.string().nullable().describe('A short explanation of why this dog is surfaced; never a numeric compatibility score.')
 })
 export const ListDogsResponse = zod.array(ListDogsResponseItem)
 
@@ -49,14 +61,27 @@ export const ListDogsResponse = zod.array(ListDogsResponseItem)
  * @summary Add a dog to the community
  */
 
+export const createDogBodyLookingForNoteMax = 240;
+
 
 
 export const CreateDogBody = zod.object({
   "name": zod.string().min(1),
-  "description": zod.string().optional(),
-  "photoUrl": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "photoUrl": zod.string().nullish(),
+  "dogSex": zod.union([zod.literal('male'),zod.literal('female'),zod.literal('unknown'),zod.literal(null)]).nullish(),
+  "size": zod.union([zod.literal('Small'),zod.literal('Medium'),zod.literal('Large'),zod.literal('Extra large'),zod.literal(null)]).nullish(),
   "temperament": zod.array(zod.string()).optional(),
-  "parkId": zod.string().optional()
+  "lookingFor": zod.array(zod.enum(['dog_walk', 'playdate', 'park_meetup', 'dog_friendly_date', 'friendship', 'regular_walking_buddy', 'dog_sitting_swap', 'occasional_dropoff_help', 'other'])).optional(),
+  "lookingForNote": zod.string().max(createDogBodyLookingForNoteMax).nullish(),
+  "energyLevel": zod.union([zod.literal('low'),zod.literal('medium'),zod.literal('high'),zod.literal(null)]).nullish(),
+  "playStyles": zod.array(zod.enum(['likes_to_chase', 'likes_wrestling', 'gentle_play', 'fetch', 'mostly_walking_together', 'prefers_people_to_dogs', 'learning_social_skills'])).optional(),
+  "compatibleWith": zod.array(zod.enum(['small_dogs', 'medium_dogs', 'large_dogs', 'puppies', 'adult_dogs', 'senior_dogs', 'calm_dogs', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'most_dogs', 'depends_on_the_dog'])).optional(),
+  "notGoodFitWith": zod.array(zod.enum(['small_dogs', 'large_dogs', 'puppies', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'rough_play', 'no_major_restrictions'])).optional(),
+  "availability": zod.array(zod.enum(['morning', 'midday', 'afternoon', 'evening', 'weekdays', 'weekends'])).optional(),
+  "meetupPreferences": zod.array(zod.enum(['neighborhood_walk', 'park_walk', 'dog_park', 'trail_hike', 'patio_social'])).optional(),
+  "sittingInterests": zod.array(zod.enum(['a_few_hours', 'half_day', 'full_day', 'overnight', 'trade_sitting_favors', 'paid_sitting_referrals'])).optional(),
+  "parkId": zod.string().nullish()
 })
 
 export const CreateDogResponse = zod.object({
@@ -66,10 +91,22 @@ export const CreateDogResponse = zod.object({
   "ownerName": zod.string().nullable(),
   "description": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "dogSex": zod.union([zod.literal('male'),zod.literal('female'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "size": zod.union([zod.literal('Small'),zod.literal('Medium'),zod.literal('Large'),zod.literal('Extra large'),zod.literal(null)]).nullable(),
   "temperament": zod.array(zod.string()),
+  "lookingFor": zod.array(zod.enum(['dog_walk', 'playdate', 'park_meetup', 'dog_friendly_date', 'friendship', 'regular_walking_buddy', 'dog_sitting_swap', 'occasional_dropoff_help', 'other'])),
+  "lookingForNote": zod.string().nullable(),
+  "energyLevel": zod.union([zod.literal('low'),zod.literal('medium'),zod.literal('high'),zod.literal(null)]).nullable(),
+  "playStyles": zod.array(zod.enum(['likes_to_chase', 'likes_wrestling', 'gentle_play', 'fetch', 'mostly_walking_together', 'prefers_people_to_dogs', 'learning_social_skills'])),
+  "compatibleWith": zod.array(zod.enum(['small_dogs', 'medium_dogs', 'large_dogs', 'puppies', 'adult_dogs', 'senior_dogs', 'calm_dogs', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'most_dogs', 'depends_on_the_dog'])),
+  "notGoodFitWith": zod.array(zod.enum(['small_dogs', 'large_dogs', 'puppies', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'rough_play', 'no_major_restrictions'])),
+  "availability": zod.array(zod.enum(['morning', 'midday', 'afternoon', 'evening', 'weekdays', 'weekends'])),
+  "meetupPreferences": zod.array(zod.enum(['neighborhood_walk', 'park_walk', 'dog_park', 'trail_hike', 'patio_social'])),
+  "sittingInterests": zod.array(zod.enum(['a_few_hours', 'half_day', 'full_day', 'overnight', 'trade_sitting_favors', 'paid_sitting_referrals'])),
   "parkId": zod.string().nullable(),
   "isInPack": zod.boolean(),
-  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.')
+  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.'),
+  "matchExplanation": zod.string().nullable().describe('A short explanation of why this dog is surfaced; never a numeric compatibility score.')
 })
 
 
@@ -105,10 +142,75 @@ export const GetMyDogResponse = zod.object({
   "ownerName": zod.string().nullable(),
   "description": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "dogSex": zod.union([zod.literal('male'),zod.literal('female'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "size": zod.union([zod.literal('Small'),zod.literal('Medium'),zod.literal('Large'),zod.literal('Extra large'),zod.literal(null)]).nullable(),
   "temperament": zod.array(zod.string()),
+  "lookingFor": zod.array(zod.enum(['dog_walk', 'playdate', 'park_meetup', 'dog_friendly_date', 'friendship', 'regular_walking_buddy', 'dog_sitting_swap', 'occasional_dropoff_help', 'other'])),
+  "lookingForNote": zod.string().nullable(),
+  "energyLevel": zod.union([zod.literal('low'),zod.literal('medium'),zod.literal('high'),zod.literal(null)]).nullable(),
+  "playStyles": zod.array(zod.enum(['likes_to_chase', 'likes_wrestling', 'gentle_play', 'fetch', 'mostly_walking_together', 'prefers_people_to_dogs', 'learning_social_skills'])),
+  "compatibleWith": zod.array(zod.enum(['small_dogs', 'medium_dogs', 'large_dogs', 'puppies', 'adult_dogs', 'senior_dogs', 'calm_dogs', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'most_dogs', 'depends_on_the_dog'])),
+  "notGoodFitWith": zod.array(zod.enum(['small_dogs', 'large_dogs', 'puppies', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'rough_play', 'no_major_restrictions'])),
+  "availability": zod.array(zod.enum(['morning', 'midday', 'afternoon', 'evening', 'weekdays', 'weekends'])),
+  "meetupPreferences": zod.array(zod.enum(['neighborhood_walk', 'park_walk', 'dog_park', 'trail_hike', 'patio_social'])),
+  "sittingInterests": zod.array(zod.enum(['a_few_hours', 'half_day', 'full_day', 'overnight', 'trade_sitting_favors', 'paid_sitting_referrals'])),
   "parkId": zod.string().nullable(),
   "isInPack": zod.boolean(),
-  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.')
+  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.'),
+  "matchExplanation": zod.string().nullable().describe('A short explanation of why this dog is surfaced; never a numeric compatibility score.')
+})
+
+
+/**
+ * @summary Update the signed-in member's primary dog profile
+ */
+
+export const updateMyDogBodyLookingForNoteMax = 240;
+
+
+
+export const UpdateMyDogBody = zod.object({
+  "name": zod.string().min(1),
+  "description": zod.string().nullish(),
+  "photoUrl": zod.string().nullish(),
+  "dogSex": zod.union([zod.literal('male'),zod.literal('female'),zod.literal('unknown'),zod.literal(null)]).nullish(),
+  "size": zod.union([zod.literal('Small'),zod.literal('Medium'),zod.literal('Large'),zod.literal('Extra large'),zod.literal(null)]).nullish(),
+  "temperament": zod.array(zod.string()).optional(),
+  "lookingFor": zod.array(zod.enum(['dog_walk', 'playdate', 'park_meetup', 'dog_friendly_date', 'friendship', 'regular_walking_buddy', 'dog_sitting_swap', 'occasional_dropoff_help', 'other'])).optional(),
+  "lookingForNote": zod.string().max(updateMyDogBodyLookingForNoteMax).nullish(),
+  "energyLevel": zod.union([zod.literal('low'),zod.literal('medium'),zod.literal('high'),zod.literal(null)]).nullish(),
+  "playStyles": zod.array(zod.enum(['likes_to_chase', 'likes_wrestling', 'gentle_play', 'fetch', 'mostly_walking_together', 'prefers_people_to_dogs', 'learning_social_skills'])).optional(),
+  "compatibleWith": zod.array(zod.enum(['small_dogs', 'medium_dogs', 'large_dogs', 'puppies', 'adult_dogs', 'senior_dogs', 'calm_dogs', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'most_dogs', 'depends_on_the_dog'])).optional(),
+  "notGoodFitWith": zod.array(zod.enum(['small_dogs', 'large_dogs', 'puppies', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'rough_play', 'no_major_restrictions'])).optional(),
+  "availability": zod.array(zod.enum(['morning', 'midday', 'afternoon', 'evening', 'weekdays', 'weekends'])).optional(),
+  "meetupPreferences": zod.array(zod.enum(['neighborhood_walk', 'park_walk', 'dog_park', 'trail_hike', 'patio_social'])).optional(),
+  "sittingInterests": zod.array(zod.enum(['a_few_hours', 'half_day', 'full_day', 'overnight', 'trade_sitting_favors', 'paid_sitting_referrals'])).optional(),
+  "parkId": zod.string().nullish()
+})
+
+export const UpdateMyDogResponse = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "name": zod.string(),
+  "ownerName": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "dogSex": zod.union([zod.literal('male'),zod.literal('female'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "size": zod.union([zod.literal('Small'),zod.literal('Medium'),zod.literal('Large'),zod.literal('Extra large'),zod.literal(null)]).nullable(),
+  "temperament": zod.array(zod.string()),
+  "lookingFor": zod.array(zod.enum(['dog_walk', 'playdate', 'park_meetup', 'dog_friendly_date', 'friendship', 'regular_walking_buddy', 'dog_sitting_swap', 'occasional_dropoff_help', 'other'])),
+  "lookingForNote": zod.string().nullable(),
+  "energyLevel": zod.union([zod.literal('low'),zod.literal('medium'),zod.literal('high'),zod.literal(null)]).nullable(),
+  "playStyles": zod.array(zod.enum(['likes_to_chase', 'likes_wrestling', 'gentle_play', 'fetch', 'mostly_walking_together', 'prefers_people_to_dogs', 'learning_social_skills'])),
+  "compatibleWith": zod.array(zod.enum(['small_dogs', 'medium_dogs', 'large_dogs', 'puppies', 'adult_dogs', 'senior_dogs', 'calm_dogs', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'most_dogs', 'depends_on_the_dog'])),
+  "notGoodFitWith": zod.array(zod.enum(['small_dogs', 'large_dogs', 'puppies', 'high_energy_dogs', 'male_dogs', 'female_dogs', 'rough_play', 'no_major_restrictions'])),
+  "availability": zod.array(zod.enum(['morning', 'midday', 'afternoon', 'evening', 'weekdays', 'weekends'])),
+  "meetupPreferences": zod.array(zod.enum(['neighborhood_walk', 'park_walk', 'dog_park', 'trail_hike', 'patio_social'])),
+  "sittingInterests": zod.array(zod.enum(['a_few_hours', 'half_day', 'full_day', 'overnight', 'trade_sitting_favors', 'paid_sitting_referrals'])),
+  "parkId": zod.string().nullable(),
+  "isInPack": zod.boolean(),
+  "distanceMiles": zod.number().nullable().describe('Approximate distance in half-mile increments; exact coordinates are never returned.'),
+  "matchExplanation": zod.string().nullable().describe('A short explanation of why this dog is surfaced; never a numeric compatibility score.')
 })
 
 

@@ -9,6 +9,138 @@ export interface HealthStatus {
   status: string;
 }
 
+/**
+ * @nullable
+ */
+export type DogDogSex = typeof DogDogSex[keyof typeof DogDogSex] | null;
+
+
+export const DogDogSex = {
+  male: 'male',
+  female: 'female',
+  unknown: 'unknown',
+} as const;
+
+/**
+ * @nullable
+ */
+export type DogSize = typeof DogSize[keyof typeof DogSize] | null;
+
+
+export const DogSize = {
+  Small: 'Small',
+  Medium: 'Medium',
+  Large: 'Large',
+  Extra_large: 'Extra large',
+} as const;
+
+export type DogLookingForItem = typeof DogLookingForItem[keyof typeof DogLookingForItem];
+
+
+export const DogLookingForItem = {
+  dog_walk: 'dog_walk',
+  playdate: 'playdate',
+  park_meetup: 'park_meetup',
+  dog_friendly_date: 'dog_friendly_date',
+  friendship: 'friendship',
+  regular_walking_buddy: 'regular_walking_buddy',
+  dog_sitting_swap: 'dog_sitting_swap',
+  occasional_dropoff_help: 'occasional_dropoff_help',
+  other: 'other',
+} as const;
+
+/**
+ * @nullable
+ */
+export type DogEnergyLevel = typeof DogEnergyLevel[keyof typeof DogEnergyLevel] | null;
+
+
+export const DogEnergyLevel = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+export type DogPlayStylesItem = typeof DogPlayStylesItem[keyof typeof DogPlayStylesItem];
+
+
+export const DogPlayStylesItem = {
+  likes_to_chase: 'likes_to_chase',
+  likes_wrestling: 'likes_wrestling',
+  gentle_play: 'gentle_play',
+  fetch: 'fetch',
+  mostly_walking_together: 'mostly_walking_together',
+  prefers_people_to_dogs: 'prefers_people_to_dogs',
+  learning_social_skills: 'learning_social_skills',
+} as const;
+
+export type DogCompatibleWithItem = typeof DogCompatibleWithItem[keyof typeof DogCompatibleWithItem];
+
+
+export const DogCompatibleWithItem = {
+  small_dogs: 'small_dogs',
+  medium_dogs: 'medium_dogs',
+  large_dogs: 'large_dogs',
+  puppies: 'puppies',
+  adult_dogs: 'adult_dogs',
+  senior_dogs: 'senior_dogs',
+  calm_dogs: 'calm_dogs',
+  high_energy_dogs: 'high_energy_dogs',
+  male_dogs: 'male_dogs',
+  female_dogs: 'female_dogs',
+  most_dogs: 'most_dogs',
+  depends_on_the_dog: 'depends_on_the_dog',
+} as const;
+
+export type DogNotGoodFitWithItem = typeof DogNotGoodFitWithItem[keyof typeof DogNotGoodFitWithItem];
+
+
+export const DogNotGoodFitWithItem = {
+  small_dogs: 'small_dogs',
+  large_dogs: 'large_dogs',
+  puppies: 'puppies',
+  high_energy_dogs: 'high_energy_dogs',
+  male_dogs: 'male_dogs',
+  female_dogs: 'female_dogs',
+  rough_play: 'rough_play',
+  no_major_restrictions: 'no_major_restrictions',
+} as const;
+
+export type DogAvailabilityItem = typeof DogAvailabilityItem[keyof typeof DogAvailabilityItem];
+
+
+export const DogAvailabilityItem = {
+  morning: 'morning',
+  midday: 'midday',
+  afternoon: 'afternoon',
+  evening: 'evening',
+  weekdays: 'weekdays',
+  weekends: 'weekends',
+} as const;
+
+export type DogMeetupPreferencesItem = typeof DogMeetupPreferencesItem[keyof typeof DogMeetupPreferencesItem];
+
+
+export const DogMeetupPreferencesItem = {
+  neighborhood_walk: 'neighborhood_walk',
+  park_walk: 'park_walk',
+  dog_park: 'dog_park',
+  trail_hike: 'trail_hike',
+  patio_social: 'patio_social',
+} as const;
+
+export type DogSittingInterestsItem = typeof DogSittingInterestsItem[keyof typeof DogSittingInterestsItem];
+
+
+export const DogSittingInterestsItem = {
+  a_few_hours: 'a_few_hours',
+  half_day: 'half_day',
+  full_day: 'full_day',
+  overnight: 'overnight',
+  trade_sitting_favors: 'trade_sitting_favors',
+  paid_sitting_referrals: 'paid_sitting_referrals',
+} as const;
+
 export interface Dog {
   id: string;
   ownerId: string;
@@ -19,7 +151,22 @@ export interface Dog {
   description: string | null;
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  dogSex: DogDogSex;
+  /** @nullable */
+  size: DogSize;
   temperament: string[];
+  lookingFor: DogLookingForItem[];
+  /** @nullable */
+  lookingForNote: string | null;
+  /** @nullable */
+  energyLevel: DogEnergyLevel;
+  playStyles: DogPlayStylesItem[];
+  compatibleWith: DogCompatibleWithItem[];
+  notGoodFitWith: DogNotGoodFitWithItem[];
+  availability: DogAvailabilityItem[];
+  meetupPreferences: DogMeetupPreferencesItem[];
+  sittingInterests: DogSittingInterestsItem[];
   /** @nullable */
   parkId: string | null;
   isInPack: boolean;
@@ -28,6 +175,11 @@ export interface Dog {
      * @nullable
      */
   distanceMiles: number | null;
+  /**
+     * A short explanation of why this dog is surfaced; never a numeric compatibility score.
+     * @nullable
+     */
+  matchExplanation: string | null;
 }
 
 export interface DogLocationInput {
@@ -48,13 +200,166 @@ export interface DogLocationStatus {
   enabled: boolean;
 }
 
+/**
+ * @nullable
+ */
+export type DogInputDogSex = typeof DogInputDogSex[keyof typeof DogInputDogSex] | null;
+
+
+export const DogInputDogSex = {
+  male: 'male',
+  female: 'female',
+  unknown: 'unknown',
+} as const;
+
+/**
+ * @nullable
+ */
+export type DogInputSize = typeof DogInputSize[keyof typeof DogInputSize] | null;
+
+
+export const DogInputSize = {
+  Small: 'Small',
+  Medium: 'Medium',
+  Large: 'Large',
+  Extra_large: 'Extra large',
+} as const;
+
+export type DogInputLookingForItem = typeof DogInputLookingForItem[keyof typeof DogInputLookingForItem];
+
+
+export const DogInputLookingForItem = {
+  dog_walk: 'dog_walk',
+  playdate: 'playdate',
+  park_meetup: 'park_meetup',
+  dog_friendly_date: 'dog_friendly_date',
+  friendship: 'friendship',
+  regular_walking_buddy: 'regular_walking_buddy',
+  dog_sitting_swap: 'dog_sitting_swap',
+  occasional_dropoff_help: 'occasional_dropoff_help',
+  other: 'other',
+} as const;
+
+/**
+ * @nullable
+ */
+export type DogInputEnergyLevel = typeof DogInputEnergyLevel[keyof typeof DogInputEnergyLevel] | null;
+
+
+export const DogInputEnergyLevel = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+export type DogInputPlayStylesItem = typeof DogInputPlayStylesItem[keyof typeof DogInputPlayStylesItem];
+
+
+export const DogInputPlayStylesItem = {
+  likes_to_chase: 'likes_to_chase',
+  likes_wrestling: 'likes_wrestling',
+  gentle_play: 'gentle_play',
+  fetch: 'fetch',
+  mostly_walking_together: 'mostly_walking_together',
+  prefers_people_to_dogs: 'prefers_people_to_dogs',
+  learning_social_skills: 'learning_social_skills',
+} as const;
+
+export type DogInputCompatibleWithItem = typeof DogInputCompatibleWithItem[keyof typeof DogInputCompatibleWithItem];
+
+
+export const DogInputCompatibleWithItem = {
+  small_dogs: 'small_dogs',
+  medium_dogs: 'medium_dogs',
+  large_dogs: 'large_dogs',
+  puppies: 'puppies',
+  adult_dogs: 'adult_dogs',
+  senior_dogs: 'senior_dogs',
+  calm_dogs: 'calm_dogs',
+  high_energy_dogs: 'high_energy_dogs',
+  male_dogs: 'male_dogs',
+  female_dogs: 'female_dogs',
+  most_dogs: 'most_dogs',
+  depends_on_the_dog: 'depends_on_the_dog',
+} as const;
+
+export type DogInputNotGoodFitWithItem = typeof DogInputNotGoodFitWithItem[keyof typeof DogInputNotGoodFitWithItem];
+
+
+export const DogInputNotGoodFitWithItem = {
+  small_dogs: 'small_dogs',
+  large_dogs: 'large_dogs',
+  puppies: 'puppies',
+  high_energy_dogs: 'high_energy_dogs',
+  male_dogs: 'male_dogs',
+  female_dogs: 'female_dogs',
+  rough_play: 'rough_play',
+  no_major_restrictions: 'no_major_restrictions',
+} as const;
+
+export type DogInputAvailabilityItem = typeof DogInputAvailabilityItem[keyof typeof DogInputAvailabilityItem];
+
+
+export const DogInputAvailabilityItem = {
+  morning: 'morning',
+  midday: 'midday',
+  afternoon: 'afternoon',
+  evening: 'evening',
+  weekdays: 'weekdays',
+  weekends: 'weekends',
+} as const;
+
+export type DogInputMeetupPreferencesItem = typeof DogInputMeetupPreferencesItem[keyof typeof DogInputMeetupPreferencesItem];
+
+
+export const DogInputMeetupPreferencesItem = {
+  neighborhood_walk: 'neighborhood_walk',
+  park_walk: 'park_walk',
+  dog_park: 'dog_park',
+  trail_hike: 'trail_hike',
+  patio_social: 'patio_social',
+} as const;
+
+export type DogInputSittingInterestsItem = typeof DogInputSittingInterestsItem[keyof typeof DogInputSittingInterestsItem];
+
+
+export const DogInputSittingInterestsItem = {
+  a_few_hours: 'a_few_hours',
+  half_day: 'half_day',
+  full_day: 'full_day',
+  overnight: 'overnight',
+  trade_sitting_favors: 'trade_sitting_favors',
+  paid_sitting_referrals: 'paid_sitting_referrals',
+} as const;
+
 export interface DogInput {
   /** @minLength 1 */
   name: string;
-  description?: string;
-  photoUrl?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  photoUrl?: string | null;
+  /** @nullable */
+  dogSex?: DogInputDogSex;
+  /** @nullable */
+  size?: DogInputSize;
   temperament?: string[];
-  parkId?: string;
+  lookingFor?: DogInputLookingForItem[];
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  lookingForNote?: string | null;
+  /** @nullable */
+  energyLevel?: DogInputEnergyLevel;
+  playStyles?: DogInputPlayStylesItem[];
+  compatibleWith?: DogInputCompatibleWithItem[];
+  notGoodFitWith?: DogInputNotGoodFitWithItem[];
+  availability?: DogInputAvailabilityItem[];
+  meetupPreferences?: DogInputMeetupPreferencesItem[];
+  sittingInterests?: DogInputSittingInterestsItem[];
+  /** @nullable */
+  parkId?: string | null;
 }
 
 export interface Park {

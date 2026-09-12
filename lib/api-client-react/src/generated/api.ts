@@ -456,6 +456,77 @@ export function useGetMyDog<TData = Awaited<ReturnType<typeof getMyDog>>, TError
 
 
 
+export const getUpdateMyDogUrl = () => {
+
+
+
+
+  return `/api/dogs/mine`
+}
+
+/**
+ * @summary Update the signed-in member's primary dog profile
+ */
+export const updateMyDog = async (dogInput: DogInput, options?: Parameters<typeof customFetch>[1]): Promise<Dog> => {
+
+  return customFetch<Dog>(getUpdateMyDogUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dogInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateMyDogMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyDog>>, TError,{data: BodyType<DogInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyDog>>, TError,{data: BodyType<DogInput>}, TContext> => {
+
+const mutationKey = ['updateMyDog'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyDog>>, {data: BodyType<DogInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateMyDog(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyDogMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyDog>>>
+    export type UpdateMyDogMutationBody = BodyType<DogInput>
+    export type UpdateMyDogMutationError = ErrorType<void>
+
+    /**
+ * @summary Update the signed-in member's primary dog profile
+ */
+export const useUpdateMyDog = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyDog>>, TError,{data: BodyType<DogInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyDog>>,
+        TError,
+        {data: BodyType<DogInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateMyDogMutationOptions(options));
+    }
+
 export const getAddDogToPackUrl = (dogId: string,) => {
 
 

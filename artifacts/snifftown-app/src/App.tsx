@@ -12,6 +12,7 @@ import Home from '@/pages/home';
 import Auth from '@/pages/auth';
 import Pack from '@/pages/pack';
 import NewDog from '@/pages/dogs/new';
+import EditDog from '@/pages/dogs/edit';
 import DogProfile from '@/pages/dogs/profile';
 import Messages from '@/pages/messages';
 
@@ -43,6 +44,7 @@ function Router() {
             <Route path="/auth" component={Auth} />
             <Route path="/pack" component={Pack} />
             <Route path="/dogs/new" component={NewDog} />
+            <Route path="/dogs/edit" component={EditDog} />
             <Route path="/dogs/:dogId" component={DogProfile} />
             <Route path="/messages" component={Messages} />
             <Route component={NotFound} />

@@ -5,6 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DogAvailabilityItem } from './dogAvailabilityItem';
+import type { DogCompatibleWithItem } from './dogCompatibleWithItem';
+import type { DogDogSex } from './dogDogSex';
+import type { DogEnergyLevel } from './dogEnergyLevel';
+import type { DogLookingForItem } from './dogLookingForItem';
+import type { DogMeetupPreferencesItem } from './dogMeetupPreferencesItem';
+import type { DogNotGoodFitWithItem } from './dogNotGoodFitWithItem';
+import type { DogPlayStylesItem } from './dogPlayStylesItem';
+import type { DogSittingInterestsItem } from './dogSittingInterestsItem';
+import type { DogSize } from './dogSize';
 
 export interface Dog {
   id: string;
@@ -16,7 +26,22 @@ export interface Dog {
   description: string | null;
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  dogSex: DogDogSex;
+  /** @nullable */
+  size: DogSize;
   temperament: string[];
+  lookingFor: DogLookingForItem[];
+  /** @nullable */
+  lookingForNote: string | null;
+  /** @nullable */
+  energyLevel: DogEnergyLevel;
+  playStyles: DogPlayStylesItem[];
+  compatibleWith: DogCompatibleWithItem[];
+  notGoodFitWith: DogNotGoodFitWithItem[];
+  availability: DogAvailabilityItem[];
+  meetupPreferences: DogMeetupPreferencesItem[];
+  sittingInterests: DogSittingInterestsItem[];
   /** @nullable */
   parkId: string | null;
   isInPack: boolean;
@@ -25,4 +50,9 @@ export interface Dog {
      * @nullable
      */
   distanceMiles: number | null;
+  /**
+     * A short explanation of why this dog is surfaced; never a numeric compatibility score.
+     * @nullable
+     */
+  matchExplanation: string | null;
 }

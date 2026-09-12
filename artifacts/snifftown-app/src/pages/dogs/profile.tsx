@@ -1,7 +1,10 @@
 import { Link, useLocation, useParams } from "wouter";
 import {
   useGetCurrentUser,
+  getGetMyDogQueryKey,
+  useGetMyDog,
   useListDogs,
+  labelFor,
 } from "@workspace/api-client-react";
 import { ArrowLeft, MessageSquare, Shield } from "lucide-react";
 
@@ -17,9 +20,11 @@ export default function DogProfile() {
   const [, setLocation] = useLocation();
   const { data: user, isLoading: userLoading } = useGetCurrentUser();
   const { data: dogs, isLoading: dogsLoading } = useListDogs();
-  const dog = dogs?.find((candidate) => candidate.id === dogId);
+  const ownDog = useGetMyDog({ query: { queryKey: getGetMyDogQueryKey(), enabled: Boolean(user?.id) } });
+  const dog = dogs?.find((candidate) => candidate.id === dogId) ??
+    (ownDog.data?.id === dogId ? ownDog.data : undefined);
 
-  if (userLoading || dogsLoading) {
+  if (userLoading || dogsLoading || ownDog.isLoading) {
     return <div className="min-h-[60vh] grid place-items-center text-muted-foreground">Loading dog profile…</div>;
   }
 
@@ -37,6 +42,12 @@ export default function DogProfile() {
       </div>
     );
   }
+
+  const isOwnDog = dog.ownerId === user.id;
+  const lookingFor = dog.lookingFor.map((value) => labelFor("lookingFor", value));
+  const compatibleWith = dog.compatibleWith.map((value) => labelFor("compatibleWith", value));
+  const availability = dog.availability.map((value) => labelFor("availability", value));
+  const sittingInterests = dog.sittingInterests.map((value) => labelFor("sitting", value));
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8 sm:py-12">
@@ -61,15 +72,39 @@ export default function DogProfile() {
                 <Shield className="h-4 w-4 text-primary" />Community Member
               </p>
 
-              <p className="mt-6 leading-relaxed text-foreground/85">
-                {dog.description || `${dog.name} is looking for neighborhood dog friends.`}
-              </p>
+              {dog.description && <p className="mt-6 leading-relaxed text-foreground/85">{dog.description}</p>}
 
               {dog.temperament.length > 0 && (
                 <div className="mt-5 flex flex-wrap justify-center gap-2 sm:justify-start">
                   {dog.temperament.map((trait) => <Badge key={trait} variant="secondary">{trait}</Badge>)}
                 </div>
               )}
+
+              <div className="mt-7 grid gap-4 sm:grid-cols-2">
+                {lookingFor.length > 0 && (
+                  <Summary title="Looking for" values={lookingFor} />
+                )}
+                {(dog.energyLevel || dog.playStyles.length > 0 || dog.size) && (
+                  <Summary
+                    title={dog.name}
+                    values={[
+                      ...dog.temperament.slice(0, 2),
+                      dog.energyLevel ? `${dog.energyLevel} energy` : "",
+                      dog.size ?? "",
+                      ...dog.playStyles.slice(0, 1).map((value) => labelFor("playStyle", value)),
+                    ].filter(Boolean)}
+                  />
+                )}
+                {compatibleWith.length > 0 && (
+                  <Summary title="Usually does well with" values={compatibleWith} />
+                )}
+                {availability.length > 0 && (
+                  <Summary title="Usually walks" values={availability} />
+                )}
+                {sittingInterests.length > 0 && (
+                  <Summary title="Comfortable with" values={sittingInterests} />
+                )}
+              </div>
 
               {dog.ownerId && dog.ownerId !== user.id && dog.isInPack && (
                 <Button asChild className="mt-7 rounded-full">
@@ -78,10 +113,24 @@ export default function DogProfile() {
                   </Link>
                 </Button>
               )}
+              {isOwnDog && (
+                <Button asChild variant="outline" className="mt-7 rounded-full">
+                  <Link href="/dogs/edit">Edit profile</Link>
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function Summary({ title, values }: { title: string; values: string[] }) {
+  return (
+    <div className="rounded-xl bg-secondary/45 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="mt-1 text-sm leading-relaxed">{values.join(" · ")}</p>
     </div>
   );
 }

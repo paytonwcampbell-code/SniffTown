@@ -13,6 +13,7 @@ import {
   getListDogsQueryKey,
   getListIncomingPackRequestsQueryKey,
   getListParksQueryKey,
+   labelFor,
   type Park,
 } from "@workspace/api-client-react";
 
@@ -310,6 +311,12 @@ export default function PackPage() {
                           </span>
                         ))}
                       </div>
+                    )}
+                    {dog.lookingFor.length > 0 && (
+                      <p className="mb-3 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground/80">Looking for:</span>{" "}
+                        {dog.lookingFor.slice(0, 2).map((value) => labelFor("lookingFor", value)).join(" · ")}
+                      </p>
                     )}
                     
                     <div className="pt-4 mt-auto border-t border-border/40 flex justify-between items-center">

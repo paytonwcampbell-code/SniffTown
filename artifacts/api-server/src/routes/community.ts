@@ -7,6 +7,9 @@ import {
   CreateLocalParkPackResponse,
   CreateDogBody,
   CreateDogResponse,
+  GetMyDogResponse,
+  UpdateMyDogBody,
+  UpdateMyDogResponse,
   ListDogsQueryParams,
   ListDogsResponse,
   ListIncomingPackRequestsResponse,
@@ -27,10 +30,158 @@ import {
   supabaseUserRequest,
 } from "../lib/connectors";
 import { getAccessToken } from "../lib/session-auth";
+import { rankDogs, toDogWritePayload } from "../lib/dog-profile";
 
 const router: IRouter = Router();
 
 type RecordValue = Record<string, unknown>;
+
+const LOOKING_FOR_VALUES = new Set([
+  "dog_walk",
+  "playdate",
+  "park_meetup",
+  "dog_friendly_date",
+  "friendship",
+  "regular_walking_buddy",
+  "dog_sitting_swap",
+  "occasional_dropoff_help",
+  "other",
+]);
+const PLAY_STYLE_VALUES = new Set([
+  "likes_to_chase",
+  "likes_wrestling",
+  "gentle_play",
+  "fetch",
+  "mostly_walking_together",
+  "prefers_people_to_dogs",
+  "learning_social_skills",
+]);
+const COMPATIBLE_WITH_VALUES = new Set([
+  "small_dogs",
+  "medium_dogs",
+  "large_dogs",
+  "puppies",
+  "adult_dogs",
+  "senior_dogs",
+  "calm_dogs",
+  "high_energy_dogs",
+  "male_dogs",
+  "female_dogs",
+  "most_dogs",
+  "depends_on_the_dog",
+]);
+const NOT_GOOD_FIT_WITH_VALUES = new Set([
+  "small_dogs",
+  "large_dogs",
+  "puppies",
+  "high_energy_dogs",
+  "male_dogs",
+  "female_dogs",
+  "rough_play",
+  "no_major_restrictions",
+]);
+const AVAILABILITY_VALUES = new Set([
+  "morning",
+  "midday",
+  "afternoon",
+  "evening",
+  "weekdays",
+  "weekends",
+]);
+const MEETUP_VALUES = new Set([
+  "neighborhood_walk",
+  "park_walk",
+  "dog_park",
+  "trail_hike",
+  "patio_social",
+]);
+const SITTING_VALUES = new Set([
+  "a_few_hours",
+  "half_day",
+  "full_day",
+  "overnight",
+  "trade_sitting_favors",
+  "paid_sitting_referrals",
+]);
+
+function stringArray(value: unknown, allowed?: Set<string>): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is string => typeof entry === "string")
+    .filter((entry) => !allowed || allowed.has(entry));
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function profileSize(value: unknown): "Small" | "Medium" | "Large" | "Extra large" | null {
+  if (value === "Small" || value === "Medium" || value === "Large" || value === "Extra large") {
+    return value;
+  }
+  if (value === "small") return "Small";
+  if (value === "medium") return "Medium";
+  if (value === "large") return "Large";
+  if (value === "extra_large" || value === "extra large") return "Extra large";
+  return null;
+}
+
+function energyLevel(value: unknown): "low" | "medium" | "high" | null {
+  return value === "low" || value === "medium" || value === "high" ? value : null;
+}
+
+function dogSex(value: unknown): "male" | "female" | "unknown" | null {
+  return value === "male" || value === "female" || value === "unknown" ? value : null;
+}
+
+function profileFields(row: RecordValue): Record<string, unknown> {
+  return {
+    size: row.size,
+    age: row.age,
+    temperament: stringArray(row.temperament),
+    dogSex: row.dog_sex,
+    energyLevel: row.energy_level,
+    lookingFor: stringArray(row.looking_for, LOOKING_FOR_VALUES),
+    playStyles: stringArray(row.play_styles, PLAY_STYLE_VALUES),
+    compatibleWith: stringArray(row.compatible_with, COMPATIBLE_WITH_VALUES),
+    notGoodFitWith: stringArray(row.not_good_fit_with, NOT_GOOD_FIT_WITH_VALUES),
+    availability: stringArray(row.availability, AVAILABILITY_VALUES),
+    distanceMiles: coordinate(row.distance_miles),
+  };
+}
+
+function serializeDog(
+  row: RecordValue,
+  ownerId: string,
+  ownerName: string | null,
+  isInPack: boolean,
+  matchExplanation: string | null = null,
+): RecordValue {
+  return {
+    id: String(row.id),
+    ownerId,
+    name: String(row.name ?? "Neighborhood dog"),
+    ownerName,
+    description: nullableString(row.description),
+    photoUrl: nullableString(row.photo_url),
+    dogSex: dogSex(row.dog_sex),
+    size: profileSize(row.size),
+    temperament: stringArray(row.temperament),
+    lookingFor: stringArray(row.looking_for, LOOKING_FOR_VALUES),
+    lookingForNote: nullableString(row.looking_for_note),
+    energyLevel: energyLevel(row.energy_level),
+    playStyles: stringArray(row.play_styles, PLAY_STYLE_VALUES),
+    compatibleWith: stringArray(row.compatible_with, COMPATIBLE_WITH_VALUES),
+    notGoodFitWith: stringArray(row.not_good_fit_with, NOT_GOOD_FIT_WITH_VALUES),
+    availability: stringArray(row.availability, AVAILABILITY_VALUES),
+    meetupPreferences: stringArray(row.meetup_preferences, MEETUP_VALUES),
+    sittingInterests: stringArray(row.sitting_interests, SITTING_VALUES),
+    parkId: null,
+    isInPack,
+    distanceMiles: coordinate(row.distance_miles),
+    matchExplanation,
+  };
+}
 
 function bearer(req: Parameters<typeof getAccessToken>[0]): Record<string, string> {
   const token = getAccessToken(req);
@@ -48,15 +199,6 @@ function coordinate(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
   return null;
-}
-
-function distanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const radians = (degrees: number) => degrees * Math.PI / 180;
-  const dLat = radians(lat2 - lat1);
-  const dLon = radians(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 async function jsonRows(
@@ -112,7 +254,7 @@ router.get("/dogs", async (req, res) => {
       return;
     }
     const [dogs, profiles, familiarRows] = await Promise.all([
-      rpcRows("get_dogs_for_matching", authHeaders),
+      rpcRows("get_dogs_for_matching_v2", authHeaders),
       jsonRows("/rest/v1/profiles?select=id,full_name", authHeaders),
       jsonRows(
         "/rest/v1/dog_familiars?select=marked_dog_id",
@@ -132,31 +274,24 @@ router.get("/dogs", async (req, res) => {
         : [],
     );
 
-    let origin: { latitude: number; longitude: number } | null = null;
+    const ownDogs = currentUserId
+      ? await jsonRows(
+          `/rest/v1/dogs?select=*&user_id=eq.${encodeURIComponent(currentUserId)}&order=updated_at.desc,created_at.desc&limit=1`,
+          authHeaders,
+        )
+      : [];
+    const ownDog = ownDogs[0] ?? null;
     if (parsed.data.nearby && currentUserId) {
-      const ownDogs = await jsonRows(
-        `/rest/v1/dogs?select=latitude,longitude&user_id=eq.${encodeURIComponent(currentUserId)}&order=updated_at.desc&limit=1`,
-        authHeaders,
-      );
-      const latitude = coordinate(ownDogs[0]?.latitude);
-      const longitude = coordinate(ownDogs[0]?.longitude);
+      const latitude = coordinate(ownDog?.latitude);
+      const longitude = coordinate(ownDog?.longitude);
       if (latitude === null || longitude === null) {
         res.status(409).json({ error: "Turn on nearby discovery before searching by distance." });
         return;
       }
-      origin = { latitude, longitude };
     }
     const radius = parsed.data.radiusMiles ?? 2;
-    const result = dogs.flatMap((dog) => {
-      const latitude = coordinate(dog.latitude);
-      const longitude = coordinate(dog.longitude);
-      const exactDistance = origin && latitude !== null && longitude !== null
-        ? distanceMiles(origin.latitude, origin.longitude, latitude, longitude)
-        : null;
-      if (origin && (String(dog.user_id) === currentUserId || exactDistance === null || exactDistance > radius)) {
-        return [];
-      }
-      return [{
+    const rankedInput = dogs.map((dog) => ({
+      ...profileFields(dog),
       id: String(dog.id),
       ownerId: String(dog.user_id),
       name: String(dog.name ?? "Neighborhood dog"),
@@ -165,17 +300,39 @@ router.get("/dogs", async (req, res) => {
         (typeof dog.owner_full_name === "string" ? dog.owner_full_name : null) ??
         profileNames.get(String(dog.user_id)) ??
         null,
-      description:
-        typeof dog.description === "string" ? dog.description : null,
-      photoUrl: typeof dog.photo_url === "string" ? dog.photo_url : null,
-      temperament: Array.isArray(dog.temperament)
-        ? dog.temperament.map(String)
-        : [],
-      parkId: null,
+      description: nullableString(dog.description),
+      photoUrl: nullableString(dog.photo_url),
+      dogSex: dogSex(dog.dog_sex),
+      size: profileSize(dog.size),
+      lookingForNote: nullableString(dog.looking_for_note),
+      playStyles: stringArray(dog.play_styles, PLAY_STYLE_VALUES),
+      meetupPreferences: stringArray(dog.meetup_preferences, MEETUP_VALUES),
+      sittingInterests: stringArray(dog.sitting_interests, SITTING_VALUES),
       isInPack: familiarDogIds.has(String(dog.id)),
-      distanceMiles: exactDistance === null ? null : Math.max(0.5, Math.round(exactDistance * 2) / 2),
-    }];
-    });
+      parkId: null,
+    }));
+    const ownProfile = ownDog ? profileFields(ownDog) : null;
+    const ranked = rankDogs(rankedInput, ownProfile) as Array<
+      RecordValue & { matchExplanation: string | null }
+    >;
+    const result = ranked
+      .filter((dog) => {
+        if (!parsed.data.nearby) return true;
+        const distance = coordinate(dog.distanceMiles);
+        return distance !== null && distance <= radius;
+      })
+      .map(({ matchExplanation, ...dog }) => ({
+        ...dog,
+        temperament: stringArray(dog.temperament),
+        lookingFor: stringArray(dog.lookingFor, LOOKING_FOR_VALUES),
+        compatibleWith: stringArray(dog.compatibleWith, COMPATIBLE_WITH_VALUES),
+        notGoodFitWith: stringArray(dog.notGoodFitWith, NOT_GOOD_FIT_WITH_VALUES),
+        availability: stringArray(dog.availability, AVAILABILITY_VALUES),
+        energyLevel: energyLevel(dog.energyLevel),
+        dogSex: dogSex(dog.dogSex),
+        distanceMiles: coordinate(dog.distanceMiles),
+        matchExplanation,
+      }));
     res.json(ListDogsResponse.parse(result));
   } catch (error) {
     req.log.error({ err: error }, "Unable to list dogs");
@@ -203,13 +360,10 @@ router.post("/dogs", async (req, res) => {
     return;
   }
   const user = (await userResponse.json()) as { id: string };
-  const payload = {
-    user_id: user.id,
-    name: parsed.data.name,
-    description: parsed.data.description ?? null,
-    photo_url: parsed.data.photoUrl ?? null,
-    temperament: parsed.data.temperament ?? [],
-  };
+  const payload = toDogWritePayload(
+    parsed.data as Record<string, unknown>,
+    user.id,
+  );
   const response = await supabaseUserRequest("/rest/v1/dogs", {
     method: "POST",
     headers: {
@@ -226,21 +380,7 @@ router.post("/dogs", async (req, res) => {
   const rows = (await response.json()) as RecordValue[];
   const dog = rows[0] ?? { id: randomUUID(), ...payload };
   res.status(201).json(
-    CreateDogResponse.parse({
-      id: String(dog.id),
-      ownerId: user.id,
-      name: String(dog.name),
-      ownerName: null,
-      description:
-        typeof dog.description === "string" ? dog.description : null,
-      photoUrl: typeof dog.photo_url === "string" ? dog.photo_url : null,
-      temperament: Array.isArray(dog.temperament)
-        ? dog.temperament.map(String)
-        : [],
-      parkId: parsed.data.parkId ?? null,
-      isInPack: false,
-      distanceMiles: null,
-    }),
+    CreateDogResponse.parse(serializeDog(dog, user.id, null, false)),
   );
 });
 
@@ -274,22 +414,83 @@ router.get("/dogs/mine", async (req, res) => {
   }
 
   res.json(
-    ListDogsResponse.element.parse({
-      id: String(dog.id),
-      ownerId: user.id,
-      name: String(dog.name ?? "My dog"),
-      ownerName:
+    GetMyDogResponse.parse(
+      serializeDog(
+        dog,
+        user.id,
         user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
-      description:
-        typeof dog.description === "string" ? dog.description : null,
-      photoUrl: typeof dog.photo_url === "string" ? dog.photo_url : null,
-      temperament: Array.isArray(dog.temperament)
-        ? dog.temperament.map(String)
-        : [],
-      parkId: null,
-      isInPack: false,
-      distanceMiles: null,
-    }),
+        false,
+      ),
+    ),
+  );
+});
+
+router.put("/dogs/mine", async (req, res) => {
+  const parsed = UpdateMyDogBody.safeParse(req.body);
+  const token = getAccessToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Sign in before updating your dog." });
+    return;
+  }
+  if (!parsed.success) {
+    res.status(400).json({ error: "Please check the dog profile fields." });
+    return;
+  }
+
+  const authHeaders = { Authorization: `Bearer ${token}` };
+  const userResponse = await supabaseUserRequest("/auth/v1/user", {
+    headers: authHeaders,
+  });
+  if (!userResponse.ok) {
+    res.status(401).json({ error: "Your session has expired." });
+    return;
+  }
+  const user = (await userResponse.json()) as {
+    id: string;
+    user_metadata?: { full_name?: string; name?: string };
+  };
+  const existingRows = await jsonRows(
+    `/rest/v1/dogs?select=*&user_id=eq.${encodeURIComponent(user.id)}&order=updated_at.desc,created_at.desc&limit=1`,
+    authHeaders,
+  );
+  const existing = existingRows[0];
+  if (!existing) {
+    res.status(404).json({ error: "Add your dog before editing its profile." });
+    return;
+  }
+
+  const payload = toDogWritePayload(
+    parsed.data as Record<string, unknown>,
+    user.id,
+    existing,
+  );
+  const response = await supabaseUserRequest(
+    `/rest/v1/dogs?id=eq.${encodeURIComponent(String(existing.id))}&user_id=eq.${encodeURIComponent(user.id)}`,
+    {
+      method: "PATCH",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+  if (!response.ok) {
+    res.status(response.status).json({ error: await readProviderError(response) });
+    return;
+  }
+  const updatedRows = (await response.json()) as RecordValue[];
+  const updated = updatedRows[0] ?? { ...existing, ...payload };
+  res.json(
+    UpdateMyDogResponse.parse(
+      serializeDog(
+        updated,
+        user.id,
+        user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+        false,
+      ),
+    ),
   );
 });
 

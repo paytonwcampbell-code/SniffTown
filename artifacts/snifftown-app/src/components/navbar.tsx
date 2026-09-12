@@ -95,10 +95,10 @@ export function Navbar() {
                       <span>Matches</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dogs/new" className="flex w-full cursor-pointer items-center">
+                   <DropdownMenuItem asChild>
+                     <Link href="/dogs/edit" className="flex w-full cursor-pointer items-center">
                       <User className="mr-2 h-4 w-4" />
-                      <span>Add Dog</span>
+                       <span>Edit dog profile</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

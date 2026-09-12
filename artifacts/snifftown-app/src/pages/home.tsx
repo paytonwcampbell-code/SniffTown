@@ -10,6 +10,7 @@ import {
   useSendContactMessage,
   getListDogsQueryKey,
   getListParksQueryKey,
+  labelFor,
   type Dog as DogType,
   type Park,
 } from "@workspace/api-client-react";
@@ -80,6 +81,10 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
             <p className="mt-2 text-sm line-clamp-2 text-foreground/80 leading-relaxed">
               {dog.description || "A good dog looking for friends."}
             </p>
+
+             {dog.matchExplanation && (
+               <p className="mt-2 text-xs font-semibold text-primary">{dog.matchExplanation}</p>
+             )}
             
             {dog.temperament && dog.temperament.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-3">
@@ -92,6 +97,26 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
                   <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium">
                     +{dog.temperament.length - 3}
                   </span>
+                )}
+              </div>
+            )}
+
+            {(dog.lookingFor.length > 0 || dog.energyLevel || dog.availability.length > 0) && (
+              <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                {dog.lookingFor.length > 0 && (
+                  <p>
+                    <span className="font-semibold text-foreground/80">Looking for:</span>{" "}
+                    {dog.lookingFor.slice(0, 3).map((value) => labelFor("lookingFor", value)).join(" · ")}
+                  </p>
+                )}
+                {(dog.energyLevel || dog.availability.length > 0) && (
+                  <p>
+                    <span className="font-semibold text-foreground/80">Usually walks:</span>{" "}
+                    {[
+                      dog.energyLevel ? `${dog.energyLevel} energy` : "",
+                      ...dog.availability.slice(0, 2).map((value) => labelFor("availability", value)),
+                    ].filter(Boolean).join(" · ")}
+                  </p>
                 )}
               </div>
             )}

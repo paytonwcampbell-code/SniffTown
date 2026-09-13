@@ -5,6 +5,8 @@ import {
   useGetMyDog,
   useListDogs,
   labelFor,
+  buildDogCompatibility,
+  type DogCompatibilitySummary,
 } from "@workspace/api-client-react";
 import { ArrowLeft, MessageSquare, Shield } from "lucide-react";
 
@@ -48,6 +50,10 @@ export default function DogProfile() {
   const compatibleWith = dog.compatibleWith.map((value) => labelFor("compatibleWith", value));
   const availability = dog.availability.map((value) => labelFor("availability", value));
   const sittingInterests = dog.sittingInterests.map((value) => labelFor("sitting", value));
+  const compatibility =
+    isOwnDog || ownDog.data?.ownerId !== user.id
+      ? null
+      : buildDogCompatibility(ownDog.data, dog);
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8 sm:py-12">
@@ -106,6 +112,10 @@ export default function DogProfile() {
                 )}
               </div>
 
+              {compatibility && (
+                <CompatibilityPanel summary={compatibility} candidateName={dog.name} />
+              )}
+
               {dog.ownerId && dog.ownerId !== user.id && dog.isInPack && (
                 <Button asChild className="mt-7 rounded-full">
                   <Link href={`/messages?to=${dog.ownerId}&dog=${dog.id}`}>
@@ -122,6 +132,112 @@ export default function DogProfile() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function CompatibilityPanel({
+  summary,
+  candidateName,
+}: {
+  summary: DogCompatibilitySummary;
+  candidateName: string;
+}) {
+  return (
+    <div className="mt-7 rounded-xl border border-primary/15 bg-primary/5 p-4">
+      <p className="text-sm font-semibold text-primary">Personalized compatibility</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        Based only on details both people have shared — this is a conversation starter, not a guarantee.
+      </p>
+
+      {!summary.hasKnownSignals ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Not enough shared profile information to personalize this comparison yet.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-2 text-sm">
+          {summary.sharedMeetupPreferences.length > 0 && (
+            <p>
+              <span className="font-semibold">Shared meetup interests:</span>{" "}
+              {summary.sharedMeetupPreferences.map((value) => labelFor("meetup", value)).join(" · ")}
+            </p>
+          )}
+          {summary.sharedLookingFor.length > 0 && (
+            <p>
+              <span className="font-semibold">Shared plans:</span>{" "}
+              {summary.sharedLookingFor.map((value) => labelFor("lookingFor", value)).join(" · ")}
+            </p>
+          )}
+          {summary.sharedSittingInterests.length > 0 && (
+            <p>
+              <span className="font-semibold">Shared care interests:</span>{" "}
+              {summary.sharedSittingInterests.map((value) => labelFor("sitting", value)).join(" · ")}
+            </p>
+          )}
+          {summary.sharedEnergyLevels.length > 0 && (
+            <p>
+              <span className="font-semibold">Shared energy:</span>{" "}
+              {summary.sharedEnergyLevels.map((value) => labelFor("energy", value)).join(" · ")}
+            </p>
+          )}
+          {summary.sharedPlayStyles.length > 0 && (
+            <p>
+              <span className="font-semibold">Shared play styles:</span>{" "}
+              {summary.sharedPlayStyles.map((value) => labelFor("playStyle", value)).join(" · ")}
+            </p>
+          )}
+          {summary.sharedTraits.length > 0 && (
+            <p>
+              <span className="font-semibold">Shared known traits:</span>{" "}
+              {summary.sharedTraits.join(" · ")}
+            </p>
+          )}
+          {summary.preferenceMatches.length > 0 && (
+            <p>
+              <span className="font-semibold">Known preferences that line up:</span>{" "}
+              {summary.preferenceMatches
+                .map(({ direction, value }) =>
+                  direction === "viewer"
+                    ? `Your dog mentions ${labelFor("compatibleWith", value).toLowerCase()}`
+                    : `${candidateName} mentions ${labelFor("compatibleWith", value).toLowerCase()}`,
+                )
+                .join(" · ")}
+            </p>
+          )}
+          {summary.genericPreferences.length > 0 && (
+            <p>
+              <span className="font-semibold">Broad preference:</span>{" "}
+              {summary.genericPreferences
+                .map((direction) =>
+                  direction === "viewer"
+                    ? "your dog’s profile is open to meeting most dogs"
+                    : `${candidateName}'s profile is open to meeting most dogs`,
+                )
+                .join(" · ")}
+            </p>
+          )}
+          {summary.restrictionCautions.length > 0 && (
+            <p className="text-destructive">
+              <span className="font-semibold">Caution:</span>{" "}
+              {summary.restrictionCautions
+                .map(({ direction, value }) =>
+                  direction === "viewer"
+                    ? `your dog may not be a fit with ${labelFor("notGoodFitWith", value).toLowerCase()}`
+                    : `${candidateName}'s profile notes they may not be a fit with ${labelFor("notGoodFitWith", value).toLowerCase()}`,
+                )
+                .join(" · ")}
+            </p>
+          )}
+          {summary.overlappingAvailability.length > 0 && (
+            <p>
+              <span className="font-semibold">Availability overlap:</span>{" "}
+              {summary.overlappingAvailability
+                .map((value) => labelFor("availability", value))
+                .join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

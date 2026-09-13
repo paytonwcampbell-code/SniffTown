@@ -228,7 +228,6 @@ const dogAttributes = (profile: Profile): Set<string> => {
 
   const energy = canonicalEnergy(profile.energyLevel);
   if (energy === "high") attributes.add("high_energy_dogs");
-  if (energy === "low") attributes.add("calm_dogs");
 
   const sex = lower(profile.dogSex);
   if (sex === "male" || sex === "female") attributes.add(`${sex}_dogs`);

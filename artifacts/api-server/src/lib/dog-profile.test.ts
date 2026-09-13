@@ -161,3 +161,13 @@ test("honors rough-play restrictions and only matches known sex", () => {
     true,
   );
 });
+
+test("does not infer calm from low energy alone", () => {
+  assert.equal(
+    dogsAreCompatible(
+      { compatibleWith: ["calm_dogs"] },
+      { energyLevel: "low" },
+    ),
+    false,
+  );
+});

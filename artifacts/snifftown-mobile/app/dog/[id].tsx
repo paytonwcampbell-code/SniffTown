@@ -1,7 +1,196 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useAddDogToPack, useListDogs, getListDogsQueryKey, labelFor, useGetMyDog } from "@workspace/api-client-react";
+import {
+  buildDogCompatibility,
+  getGetMyDogQueryKey,
+  getListDogsQueryKey,
+  labelFor,
+  useAddDogToPack,
+  useGetMyDog,
+  useListDogs,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ActionButton, DogAvatar } from "@/components/Brand"; import { useColors } from "@/hooks/useColors";
-export default function DogProfile(){const {id}=useLocalSearchParams<{id:string}>(),c=useColors(),router=useRouter(),qc=useQueryClient(),dogs=useListDogs(),own=useGetMyDog(),dog=dogs.data?.find(x=>x.id===id)??(own.data?.id===id?own.data:undefined),interest=useAddDogToPack({mutation:{onSuccess:()=>qc.invalidateQueries({queryKey:getListDogsQueryKey()})}});if(!dog)return <View style={[s.center,{backgroundColor:c.background}]}><Text style={{color:c.foreground}}>That dog profile is no longer available.</Text></View>;return <ScrollView style={{backgroundColor:c.background}} contentContainerStyle={s.page}><DogAvatar name={dog.name} uri={dog.photoUrl} size={150}/><Text style={[s.name,{color:c.foreground}]}>{dog.name}</Text><Text style={{color:c.mutedForeground}}>with {dog.ownerName??"a local neighbor"}</Text>{dog.matchExplanation&&<Text style={[s.reason,{color:c.primary}]}>{dog.matchExplanation}</Text>}<View style={s.tags}>{dog.temperament.map(t=><Text key={t} style={[s.tag,{backgroundColor:c.accent,color:c.accentForeground}]}>{t}</Text>)}</View><View style={[s.about,{backgroundColor:c.card,borderColor:c.border}]}><Text style={[s.aboutTitle,{color:c.foreground}]}>A quick profile</Text>{dog.description&&<Text style={[s.description,{color:c.foreground}]}>{dog.description}</Text>}{dog.lookingFor.length>0&&<Text style={[s.summary,{color:c.foreground}]}>Looking for: {dog.lookingFor.map(value=>labelFor("lookingFor",value)).join(" · ")}</Text>}{(dog.energyLevel||dog.size||dog.playStyles.length>0)&&<Text style={[s.summary,{color:c.foreground}]}>{[dog.size,dog.energyLevel?`${dog.energyLevel} energy`:"",...dog.playStyles.slice(0,1).map(value=>labelFor("playStyle",value))].filter(Boolean).join(" · ")}</Text>}{dog.compatibleWith.length>0&&<Text style={[s.summary,{color:c.foreground}]}>Usually does well with: {dog.compatibleWith.map(value=>labelFor("compatibleWith",value)).join(" · ")}</Text>}{dog.availability.length>0&&<Text style={[s.summary,{color:c.foreground}]}>Usually walks: {dog.availability.map(value=>labelFor("availability",value)).join(" · ")}</Text>}{dog.sittingInterests.length>0&&<Text style={[s.summary,{color:c.foreground}]}>Comfortable with: {dog.sittingInterests.map(value=>labelFor("sitting",value)).join(" · ")}</Text>}</View>{own.data?.id===dog.id?<ActionButton label="Edit profile" secondary onPress={()=>router.push("/dog/edit")}/>:dog.isInPack?<ActionButton label="Message their person" onPress={()=>router.push(`/conversation/new?to=${dog.ownerId}&name=${encodeURIComponent(dog.name)}`)}/>:<ActionButton label="Interested" disabled={interest.isPending} onPress={()=>interest.mutate({dogId:dog.id})}/>}</ScrollView>}
- const s=StyleSheet.create({page:{alignItems:"center",padding:24,gap:12},name:{fontFamily:"Georgia",fontWeight:"700",fontSize:34},reason:{fontSize:13,fontWeight:"800",textAlign:"center"},tags:{flexDirection:"row",gap:6,flexWrap:"wrap",justifyContent:"center"},tag:{paddingHorizontal:10,paddingVertical:6,borderRadius:13,fontWeight:"700"},about:{alignSelf:"stretch",borderWidth:1,borderRadius:16,padding:17,gap:8,marginVertical:8},aboutTitle:{fontFamily:"Georgia",fontSize:20,fontWeight:"700"},description:{fontSize:16,lineHeight:23},summary:{fontSize:14,lineHeight:20},center:{flex:1,alignItems:"center",justifyContent:"center"}});
+
+import { ActionButton, DogAvatar } from "@/components/Brand";
+import { CompatibilitySummary } from "@/components/CompatibilitySummary";
+import { useColors } from "@/hooks/useColors";
+import { useSession } from "@/context/SessionContext";
+
+export default function DogProfile() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const c = useColors();
+  const router = useRouter();
+  const qc = useQueryClient();
+  const { user } = useSession();
+  const dogs = useListDogs();
+  const own = useGetMyDog({
+    query: { enabled: Boolean(user?.id), queryKey: getGetMyDogQueryKey() },
+  });
+  const dog =
+    dogs.data?.find((candidate) => candidate.id === id) ??
+    (own.data?.id === id ? own.data : undefined);
+  const compatibility =
+    dog && own.data?.ownerId === user?.id && own.data?.id !== dog.id
+      ? buildDogCompatibility(own.data, dog)
+      : null;
+  const interest = useAddDogToPack({
+    mutation: {
+      onSuccess: () =>
+        qc.invalidateQueries({ queryKey: getListDogsQueryKey() }),
+    },
+  });
+
+  if (!dog) {
+    return (
+      <View style={[s.center, { backgroundColor: c.background }]}>
+        <Text style={{ color: c.foreground }}>
+          That dog profile is no longer available.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={{ backgroundColor: c.background }}
+      contentContainerStyle={s.page}
+    >
+      <DogAvatar name={dog.name} uri={dog.photoUrl} size={150} />
+      <Text style={[s.name, { color: c.foreground }]}>{dog.name}</Text>
+      <Text style={{ color: c.mutedForeground }}>
+        with {dog.ownerName ?? "a local neighbor"}
+      </Text>
+      {dog.matchExplanation && !compatibility?.restrictionCautions.length && (
+        <Text style={[s.reason, { color: c.primary }]}>
+          {dog.matchExplanation}
+        </Text>
+      )}
+      <View style={s.tags}>
+        {dog.temperament.map((trait) => (
+          <Text
+            key={trait}
+            style={[
+              s.tag,
+              { backgroundColor: c.accent, color: c.accentForeground },
+            ]}
+          >
+            {trait}
+          </Text>
+        ))}
+      </View>
+      <View
+        style={[
+          s.about,
+          { backgroundColor: c.card, borderColor: c.border },
+        ]}
+      >
+        <Text style={[s.aboutTitle, { color: c.foreground }]}>
+          A quick profile
+        </Text>
+        {dog.description && (
+          <Text style={[s.description, { color: c.foreground }]}>
+            {dog.description}
+          </Text>
+        )}
+        {dog.lookingFor.length > 0 && (
+          <Text style={[s.summary, { color: c.foreground }]}>
+            Looking for:{" "}
+            {dog.lookingFor
+              .map((value) => labelFor("lookingFor", value))
+              .join(" · ")}
+          </Text>
+        )}
+        {(dog.energyLevel || dog.size || dog.playStyles.length > 0) && (
+          <Text style={[s.summary, { color: c.foreground }]}>
+            {[
+              dog.size,
+              dog.energyLevel ? `${dog.energyLevel} energy` : "",
+              ...dog.playStyles
+                .slice(0, 1)
+                .map((value) => labelFor("playStyle", value)),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+        )}
+        {dog.compatibleWith.length > 0 && (
+          <Text style={[s.summary, { color: c.foreground }]}>
+            Usually does well with:{" "}
+            {dog.compatibleWith
+              .map((value) => labelFor("compatibleWith", value))
+              .join(" · ")}
+          </Text>
+        )}
+        {dog.availability.length > 0 && (
+          <Text style={[s.summary, { color: c.foreground }]}>
+            Usually walks:{" "}
+            {dog.availability
+              .map((value) => labelFor("availability", value))
+              .join(" · ")}
+          </Text>
+        )}
+        {dog.sittingInterests.length > 0 && (
+          <Text style={[s.summary, { color: c.foreground }]}>
+            Comfortable with:{" "}
+            {dog.sittingInterests
+              .map((value) => labelFor("sitting", value))
+              .join(" · ")}
+          </Text>
+        )}
+      </View>
+      {compatibility && (
+        <CompatibilitySummary
+          summary={compatibility}
+          candidateName={dog.name}
+        />
+      )}
+      {own.data?.id === dog.id ? (
+        <ActionButton
+          label="Edit profile"
+          secondary
+          onPress={() => router.push("/dog/edit")}
+        />
+      ) : dog.isInPack ? (
+        <ActionButton
+          label="Message their person"
+          onPress={() =>
+            router.push(
+              `/conversation/new?to=${dog.ownerId}&name=${encodeURIComponent(dog.name)}`,
+            )
+          }
+        />
+      ) : (
+        <ActionButton
+          label="Interested"
+          disabled={interest.isPending}
+          onPress={() => interest.mutate({ dogId: dog.id })}
+        />
+      )}
+    </ScrollView>
+  );
+}
+
+const s = StyleSheet.create({
+  page: { alignItems: "center", padding: 24, gap: 12 },
+  name: { fontFamily: "Georgia", fontWeight: "700", fontSize: 34 },
+  reason: { fontSize: 13, fontWeight: "800", textAlign: "center" },
+  tags: {
+    flexDirection: "row",
+    gap: 6,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  tag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 13, fontWeight: "700" },
+  about: {
+    alignSelf: "stretch",
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 17,
+    gap: 8,
+    marginVertical: 8,
+  },
+  aboutTitle: { fontFamily: "Georgia", fontSize: 20, fontWeight: "700" },
+  description: { fontSize: 16, lineHeight: 23 },
+  summary: { fontSize: 14, lineHeight: 20 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+});

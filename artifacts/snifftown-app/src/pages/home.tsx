@@ -7,10 +7,14 @@ import {
   useAddDogToPack,
   useUpdateParkPackMembership,
   useGetCurrentUser,
+  getGetMyDogQueryKey,
+  useGetMyDog,
   useSendContactMessage,
   getListDogsQueryKey,
   getListParksQueryKey,
   labelFor,
+  buildDogCompatibility,
+  type DogCompatibilitySummary,
   type Dog as DogType,
   type Park,
 } from "@workspace/api-client-react";
@@ -27,9 +31,82 @@ import { MapPin, Users, Dog, ChevronRight, Heart, Shield, MessageSquare } from "
 // Helper for initials
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
-function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: string, isUserLoggedIn: boolean }) {
+function CompatibilityHighlights({
+  summary,
+  candidateName,
+}: {
+  summary: DogCompatibilitySummary;
+  candidateName: string;
+}) {
+  if (!summary.hasKnownSignals) return null;
+
+  const lines: string[] = [];
+  if (summary.restrictionCautions.length > 0) {
+    const caution = summary.restrictionCautions[0];
+    lines.push(
+      `Caution: ${caution.direction === "viewer" ? "your dog" : `${candidateName}'s profile`} notes a possible mismatch with ${labelFor("notGoodFitWith", caution.value).toLowerCase()}.`,
+    );
+  }
+  if (summary.sharedMeetupPreferences.length > 0) {
+    lines.push(
+      `Shared meetup interests: ${summary.sharedMeetupPreferences
+        .slice(0, 2)
+        .map((value) => labelFor("meetup", value))
+        .join(" · ")}`,
+    );
+  }
+  if (summary.sharedSittingInterests.length > 0) {
+    lines.push(
+      `Shared care interests: ${summary.sharedSittingInterests
+        .slice(0, 2)
+        .map((value) => labelFor("sitting", value))
+        .join(" · ")}`,
+    );
+  }
+  if (summary.sharedEnergyLevels.length > 0 || summary.sharedPlayStyles.length > 0) {
+    lines.push(
+      `Shared energy/play: ${[
+        ...summary.sharedEnergyLevels.map((value) => labelFor("energy", value)),
+        ...summary.sharedPlayStyles.map((value) => labelFor("playStyle", value)),
+      ].join(" · ")}`,
+    );
+  }
+  if (summary.preferenceMatches.length > 0) {
+    const preference = summary.preferenceMatches[0];
+    lines.push(
+      `${preference.direction === "viewer" ? "Your dog" : candidateName} mentions ${labelFor("compatibleWith", preference.value).toLowerCase()}.`,
+    );
+  }
+  if (summary.overlappingAvailability.length > 0) {
+    lines.push(
+      `Availability overlap: ${summary.overlappingAvailability
+        .slice(0, 2)
+        .map((value) => labelFor("availability", value).toLowerCase())
+        .join(" · ")}`,
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-1 text-xs text-foreground/75">
+      {lines.slice(0, 3).map((line) => <p key={line}>{line}</p>)}
+    </div>
+  );
+}
+
+function DogCard({
+  dog,
+  parkName,
+  isUserLoggedIn,
+  viewerDog,
+}: {
+  dog: DogType;
+  parkName?: string;
+  isUserLoggedIn: boolean;
+  viewerDog?: DogType;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const compatibility = buildDogCompatibility(viewerDog, dog);
   
   const addDog = useAddDogToPack({
     mutation: {
@@ -82,8 +159,12 @@ function DogCard({ dog, parkName, isUserLoggedIn }: { dog: DogType, parkName?: s
               {dog.description || "A good dog looking for friends."}
             </p>
 
-             {dog.matchExplanation && (
+             {dog.matchExplanation && !compatibility?.restrictionCautions.length && (
                <p className="mt-2 text-xs font-semibold text-primary">{dog.matchExplanation}</p>
+             )}
+
+             {compatibility && (
+               <CompatibilityHighlights summary={compatibility} candidateName={dog.name} />
              )}
             
             {dog.temperament && dog.temperament.length > 0 && (
@@ -252,6 +333,12 @@ function LocalParkPackCard({
 export default function Home() {
   const { data: user } = useGetCurrentUser();
   const { data: dogs, isLoading: dogsLoading } = useListDogs();
+  const ownDog = useGetMyDog({
+    query: {
+      queryKey: getGetMyDogQueryKey(),
+      enabled: Boolean(user?.id),
+    },
+  });
   const { data: parks } = useListParks();
   const { toast } = useToast();
   const isUserLoggedIn = !!user?.id;
@@ -369,6 +456,11 @@ export default function Home() {
                     dog={dog} 
                     parkName={park?.name}
                     isUserLoggedIn={isUserLoggedIn}
+                     viewerDog={
+                       isUserLoggedIn && ownDog.data?.ownerId === user?.id
+                         ? ownDog.data
+                         : undefined
+                     }
                   />
                 );
               })}

@@ -16,6 +16,8 @@ tags:
     description: Nearby parks
   - name: packs
     description: Neighborhood packs
+  - name: sitting
+    description: Trusted pack pet-sitting exchanges
   - name: auth
     description: Account access and session management
   - name: contact
@@ -361,6 +363,92 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Pack"
+  /sitting-requests:
+    get:
+      operationId: listSittingRequests
+      tags: [sitting]
+      summary: List pet-sitting requests visible to the signed-in member
+      responses:
+        "200":
+          description: Relevant pet-sitting requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SittingRequest"
+        "401":
+          description: Authentication required
+    post:
+      operationId: createSittingRequest
+      tags: [sitting]
+      summary: Ask trusted pack members for pet-sitting help
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SittingRequestInput"
+      responses:
+        "201":
+          description: Request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SittingRequest"
+        "401":
+          description: Authentication required
+  /sitting-requests/{requestId}/offers:
+    post:
+      operationId: createSittingOffer
+      tags: [sitting]
+      summary: Offer to help with a trusted pack request
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SittingOfferInput"
+      responses:
+        "201":
+          description: Offer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SittingOffer"
+        "401":
+          description: Authentication required
+  /sitting-requests/{requestId}/offers/{offerId}/accept:
+    post:
+      operationId: acceptSittingOffer
+      tags: [sitting]
+      summary: Accept one offer for a pet-sitting request
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Offer accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SittingRequest"
+        "401":
+          description: Authentication required
   /auth/signup:
     post:
       operationId: signUp
@@ -980,6 +1068,83 @@ components:
         status:
           type: string
       required: [id, dogId, status]
+    SittingOffer:
+      type: object
+      properties:
+        id:
+          type: string
+        helperId:
+          type: string
+        helperName:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, declined]
+        contactEmail:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, helperId, helperName, message, status, contactEmail, createdAt]
+    SittingRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        ownerId:
+          type: string
+        ownerName:
+          type: string
+        dogId:
+          type: string
+        dogName:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        careNotes:
+          type: string
+        status:
+          type: string
+          enum: [open, matched]
+        contactEmail:
+          type: ["string", "null"]
+        offers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SittingOffer"
+        createdAt:
+          type: string
+      required: [id, ownerId, ownerName, dogId, dogName, startDate, endDate, careNotes, status, contactEmail, offers, createdAt]
+    SittingRequestInput:
+      type: object
+      properties:
+        dogId:
+          type: string
+          minLength: 1
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        careNotes:
+          type: string
+          minLength: 1
+          maxLength: 1500
+      required: [dogId, startDate, endDate, careNotes]
+    SittingOfferInput:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required: [message]
     IncomingPackRequest:
       type: object
       properties:

@@ -474,6 +474,70 @@ export interface PackRequest {
   status: string;
 }
 
+export type SittingOfferStatus = typeof SittingOfferStatus[keyof typeof SittingOfferStatus];
+
+
+export const SittingOfferStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  declined: 'declined',
+} as const;
+
+export interface SittingOffer {
+  id: string;
+  helperId: string;
+  helperName: string;
+  message: string;
+  status: SittingOfferStatus;
+  /** @nullable */
+  contactEmail: string | null;
+  createdAt: string;
+}
+
+export type SittingRequestStatus = typeof SittingRequestStatus[keyof typeof SittingRequestStatus];
+
+
+export const SittingRequestStatus = {
+  open: 'open',
+  matched: 'matched',
+} as const;
+
+export interface SittingRequest {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  dogId: string;
+  dogName: string;
+  startDate: string;
+  endDate: string;
+  careNotes: string;
+  status: SittingRequestStatus;
+  /** @nullable */
+  contactEmail: string | null;
+  offers: SittingOffer[];
+  createdAt: string;
+}
+
+export interface SittingRequestInput {
+  /** @minLength 1 */
+  dogId: string;
+  startDate: string;
+  endDate: string;
+  /**
+     * @minLength 1
+     * @maxLength 1500
+     */
+  careNotes: string;
+}
+
+export interface SittingOfferInput {
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  message: string;
+}
+
 export interface IncomingPackRequest {
   id: string;
   fromDogName: string;

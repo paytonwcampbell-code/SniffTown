@@ -418,6 +418,131 @@ export const ListPacksResponse = zod.array(ListPacksResponseItem)
 
 
 /**
+ * @summary List pet-sitting requests visible to the signed-in member
+ */
+export const ListSittingRequestsResponseItem = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "ownerName": zod.string(),
+  "dogId": zod.string(),
+  "dogName": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "careNotes": zod.string(),
+  "status": zod.enum(['open', 'matched']),
+  "contactEmail": zod.string().nullable(),
+  "offers": zod.array(zod.object({
+  "id": zod.string(),
+  "helperId": zod.string(),
+  "helperName": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['pending', 'accepted', 'declined']),
+  "contactEmail": zod.string().nullable(),
+  "createdAt": zod.string()
+})),
+  "createdAt": zod.string()
+})
+export const ListSittingRequestsResponse = zod.array(ListSittingRequestsResponseItem)
+
+
+/**
+ * @summary Ask trusted pack members for pet-sitting help
+ */
+
+export const createSittingRequestBodyCareNotesMax = 1500;
+
+
+
+export const CreateSittingRequestBody = zod.object({
+  "dogId": zod.string().min(1),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "careNotes": zod.string().min(1).max(createSittingRequestBodyCareNotesMax)
+})
+
+export const CreateSittingRequestResponse = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "ownerName": zod.string(),
+  "dogId": zod.string(),
+  "dogName": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "careNotes": zod.string(),
+  "status": zod.enum(['open', 'matched']),
+  "contactEmail": zod.string().nullable(),
+  "offers": zod.array(zod.object({
+  "id": zod.string(),
+  "helperId": zod.string(),
+  "helperName": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['pending', 'accepted', 'declined']),
+  "contactEmail": zod.string().nullable(),
+  "createdAt": zod.string()
+})),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Offer to help with a trusted pack request
+ */
+export const CreateSittingOfferParams = zod.object({
+  "requestId": zod.coerce.string()
+})
+
+export const createSittingOfferBodyMessageMax = 500;
+
+
+
+export const CreateSittingOfferBody = zod.object({
+  "message": zod.string().min(1).max(createSittingOfferBodyMessageMax)
+})
+
+export const CreateSittingOfferResponse = zod.object({
+  "id": zod.string(),
+  "helperId": zod.string(),
+  "helperName": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['pending', 'accepted', 'declined']),
+  "contactEmail": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Accept one offer for a pet-sitting request
+ */
+export const AcceptSittingOfferParams = zod.object({
+  "requestId": zod.coerce.string(),
+  "offerId": zod.coerce.string()
+})
+
+export const AcceptSittingOfferResponse = zod.object({
+  "id": zod.string(),
+  "ownerId": zod.string(),
+  "ownerName": zod.string(),
+  "dogId": zod.string(),
+  "dogName": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "careNotes": zod.string(),
+  "status": zod.enum(['open', 'matched']),
+  "contactEmail": zod.string().nullable(),
+  "offers": zod.array(zod.object({
+  "id": zod.string(),
+  "helperId": zod.string(),
+  "helperName": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['pending', 'accepted', 'declined']),
+  "contactEmail": zod.string().nullable(),
+  "createdAt": zod.string()
+})),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Create a SniffTown account
  */
 export const SignUpHeader = zod.object({

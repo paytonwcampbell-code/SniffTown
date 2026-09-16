@@ -28,6 +28,14 @@ import {
   RespondToPackRequestBody,
   RespondToPackRequestParams,
   RespondToPackRequestResponse,
+  AcceptSittingOfferParams,
+  AcceptSittingOfferResponse,
+  CreateSittingOfferBody,
+  CreateSittingOfferParams,
+  CreateSittingOfferResponse,
+  CreateSittingRequestBody,
+  CreateSittingRequestResponse,
+  ListSittingRequestsResponse,
 } from "@workspace/api-zod";
 import {
   readProviderError,
@@ -47,6 +55,23 @@ import {
 const router: IRouter = Router();
 
 type RecordValue = Record<string, unknown>;
+
+type AuthUser = {
+  id: string;
+  email?: string;
+  user_metadata?: { full_name?: string; name?: string };
+};
+
+type SittingPayload = {
+  kind: "sitting-request" | "sitting-offer";
+  requestId?: string;
+  acceptedOfferId?: string;
+  startDate?: string;
+  endDate?: string;
+  careNotes?: string;
+  message?: string;
+  contactEmail?: string | null;
+};
 
 const LOOKING_FOR_VALUES = new Set([
   "dog_walk",
@@ -244,6 +269,363 @@ async function rpcRows(
   }
   return (await response.json()) as RecordValue[];
 }
+
+async function currentUser(
+  req: Parameters<typeof getAccessToken>[0],
+): Promise<AuthUser | null> {
+  const token = getAccessToken(req);
+  if (!token) return null;
+  const response = await supabaseUserRequest("/auth/v1/user", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) return null;
+  return (await response.json()) as AuthUser;
+}
+
+function parseSittingPayload(row: RecordValue): SittingPayload | null {
+  if (typeof row.message !== "string") return null;
+  try {
+    const payload = JSON.parse(row.message) as SittingPayload;
+    return payload.kind === "sitting-request" || payload.kind === "sitting-offer"
+      ? payload
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function visibleSittingRequests(
+  user: AuthUser,
+  authHeaders: Record<string, string>,
+) {
+  const [rows, dogs, profiles, memberships] = await Promise.all([
+    jsonRows("/rest/v1/pack_requests?select=*&order=created_at.desc&limit=250", authHeaders),
+    jsonRows("/rest/v1/dogs?select=id,user_id,name", authHeaders),
+    jsonRows("/rest/v1/profiles?select=id,full_name", authHeaders),
+    jsonRows("/rest/v1/pack_members?select=pack_id,user_id", authHeaders),
+  ]);
+  const userPackIds = new Set(
+    memberships
+      .filter((member) => String(member.user_id) === user.id)
+      .map((member) => String(member.pack_id)),
+  );
+  const trustedUserIds = new Set(
+    memberships
+      .filter((member) => userPackIds.has(String(member.pack_id)))
+      .map((member) => String(member.user_id)),
+  );
+  trustedUserIds.add(user.id);
+  const dogMap = new Map(dogs.map((dog) => [String(dog.id), dog]));
+  const names = new Map(
+    profiles.map((profile) => [
+      String(profile.id),
+      typeof profile.full_name === "string" ? profile.full_name : "Pack neighbor",
+    ]),
+  );
+  const requestRows = rows.filter(
+    (row) =>
+      parseSittingPayload(row)?.kind === "sitting-request" &&
+      trustedUserIds.has(String(row.from_user_id)),
+  );
+
+  return requestRows.map((row) => {
+    const payload = parseSittingPayload(row)!;
+    const requestId = String(row.id);
+    const ownerId = String(row.from_user_id);
+    const offerRows = rows.filter((candidate) => {
+      const offerPayload = parseSittingPayload(candidate);
+      return (
+        offerPayload?.kind === "sitting-offer" &&
+        offerPayload.requestId === requestId
+      );
+    });
+    const acceptedOfferId = payload.acceptedOfferId;
+    const accepted = String(row.status) === "accepted" || Boolean(acceptedOfferId);
+    const currentUserAccepted = offerRows.some(
+      (offer) =>
+        String(offer.from_user_id) === user.id &&
+        (String(offer.status) === "accepted" ||
+          String(offer.id) === acceptedOfferId),
+    );
+    const canSeeOwnerContact =
+      ownerId === user.id && accepted
+        ? true
+        : accepted && currentUserAccepted;
+    const dog = dogMap.get(String(row.to_dog_id));
+
+    return {
+      id: requestId,
+      ownerId,
+      ownerName: names.get(ownerId) ?? "Pack neighbor",
+      dogId: String(row.to_dog_id),
+      dogName: String(dog?.name ?? "Pack dog"),
+      startDate: payload.startDate!,
+      endDate: payload.endDate!,
+      careNotes: payload.careNotes!,
+      status: accepted ? "matched" : "open",
+      contactEmail: canSeeOwnerContact ? payload.contactEmail ?? null : null,
+      offers: offerRows.map((offer) => {
+        const offerPayload = parseSittingPayload(offer)!;
+        const offerAccepted =
+          String(offer.status) === "accepted" ||
+          String(offer.id) === acceptedOfferId;
+        const helperId = String(offer.from_user_id);
+        return {
+          id: String(offer.id),
+          helperId,
+          helperName: names.get(helperId) ?? "Pack neighbor",
+          message: offerPayload.message ?? "",
+          status: offerAccepted ? "accepted" : "pending",
+          contactEmail:
+            offerAccepted && (ownerId === user.id || helperId === user.id)
+              ? offerPayload.contactEmail ?? null
+              : null,
+          createdAt: String(offer.created_at),
+        };
+      }),
+      createdAt: String(row.created_at),
+    };
+  });
+}
+
+router.get("/sitting-requests", async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to view pet-sitting exchanges." });
+    return;
+  }
+  try {
+    res.json(
+      ListSittingRequestsResponse.parse(
+        await visibleSittingRequests(user, bearer(req)),
+      ),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to list pet-sitting requests");
+    res.status(502).json({ error: "Unable to load pet-sitting exchanges." });
+  }
+});
+
+router.post("/sitting-requests", async (req, res) => {
+  const parsed = CreateSittingRequestBody.safeParse(req.body);
+  const user = await currentUser(req);
+  const authHeaders = bearer(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to request pet-sitting help." });
+    return;
+  }
+  if (!parsed.success || parsed.data.endDate < parsed.data.startDate) {
+    res.status(400).json({ error: "Check the dog, dates, and care notes." });
+    return;
+  }
+
+  try {
+    const dogs = await jsonRows(
+      `/rest/v1/dogs?select=id,user_id&id=eq.${encodeURIComponent(parsed.data.dogId)}&limit=1`,
+      authHeaders,
+    );
+    if (!dogs[0] || String(dogs[0].user_id) !== user.id) {
+      res.status(403).json({ error: "You can only request care for your own dog." });
+      return;
+    }
+    const response = await supabaseUserRequest("/rest/v1/pack_requests", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        from_user_id: user.id,
+        to_user_id: user.id,
+        to_dog_id: parsed.data.dogId,
+        status: "pending",
+        message: JSON.stringify({
+          kind: "sitting-request",
+          ...parsed.data,
+          contactEmail: user.email ?? null,
+        }),
+      }),
+    });
+    if (!response.ok) {
+      res.status(response.status).json({ error: await readProviderError(response) });
+      return;
+    }
+    const created = ((await response.json()) as RecordValue[])[0];
+    if (!created?.id) {
+      res.status(502).json({ error: "The care request could not be saved." });
+      return;
+    }
+    const requests = await visibleSittingRequests(user, authHeaders);
+    const result = requests.find((request) => request.id === String(created.id));
+    if (!result) {
+      res.status(502).json({ error: "The care request could not be loaded." });
+      return;
+    }
+    res.status(201).json(CreateSittingRequestResponse.parse(result));
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to create pet-sitting request");
+    res.status(502).json({ error: "Unable to create the pet-sitting request." });
+  }
+});
+
+router.post("/sitting-requests/:requestId/offers", async (req, res) => {
+  const params = CreateSittingOfferParams.safeParse(req.params);
+  const parsed = CreateSittingOfferBody.safeParse(req.body);
+  const user = await currentUser(req);
+  const authHeaders = bearer(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to offer pet-sitting help." });
+    return;
+  }
+  if (!params.success || !parsed.success) {
+    res.status(400).json({ error: "Enter a short note with your offer." });
+    return;
+  }
+
+  try {
+    const requests = await visibleSittingRequests(user, authHeaders);
+    const request = requests.find((item) => item.id === params.data.requestId);
+    if (!request) {
+      res.status(404).json({ error: "This request is not visible to your pack." });
+      return;
+    }
+    if (request.ownerId === user.id || request.status !== "open") {
+      res.status(409).json({ error: "This request cannot receive your offer." });
+      return;
+    }
+    if (request.offers.some((offer) => offer.helperId === user.id)) {
+      res.status(409).json({ error: "You have already offered to help." });
+      return;
+    }
+    const response = await supabaseUserRequest("/rest/v1/pack_requests", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        from_user_id: user.id,
+        to_user_id: request.ownerId,
+        to_dog_id: request.dogId,
+        status: "pending",
+        message: JSON.stringify({
+          kind: "sitting-offer",
+          requestId: request.id,
+          message: parsed.data.message,
+          contactEmail: user.email ?? null,
+        }),
+      }),
+    });
+    if (!response.ok) {
+      res.status(response.status).json({ error: await readProviderError(response) });
+      return;
+    }
+    const row = ((await response.json()) as RecordValue[])[0];
+    if (!row?.id) {
+      res.status(502).json({ error: "The care offer could not be saved." });
+      return;
+    }
+    res.status(201).json(
+      CreateSittingOfferResponse.parse({
+        id: String(row.id),
+        helperId: user.id,
+        helperName:
+          user.user_metadata?.full_name ??
+          user.user_metadata?.name ??
+          "Pack neighbor",
+        message: parsed.data.message,
+        status: "pending",
+        contactEmail: null,
+        createdAt: String(row.created_at),
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to create pet-sitting offer");
+    res.status(502).json({ error: "Unable to create the pet-sitting offer." });
+  }
+});
+
+router.post(
+  "/sitting-requests/:requestId/offers/:offerId/accept",
+  async (req, res) => {
+    const params = AcceptSittingOfferParams.safeParse(req.params);
+    const user = await currentUser(req);
+    const authHeaders = bearer(req);
+    if (!user) {
+      res.status(401).json({ error: "Sign in to accept an offer." });
+      return;
+    }
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid offer." });
+      return;
+    }
+
+    try {
+      const requests = await visibleSittingRequests(user, authHeaders);
+      const request = requests.find((item) => item.id === params.data.requestId);
+      const offer = request?.offers.find((item) => item.id === params.data.offerId);
+      if (!request || request.ownerId !== user.id || !offer) {
+        res.status(404).json({ error: "Offer not found." });
+        return;
+      }
+      if (request.status !== "open") {
+        res.status(409).json({ error: "An offer has already been accepted." });
+        return;
+      }
+
+      // Persist the match on the request row with a guarded single-row update.
+      // The pending predicate makes concurrent accepts lose cleanly, while the
+      // accepted offer id lets reads derive the offer state without a second
+      // non-atomic write.
+      const requestRows = await jsonRows(
+        `/rest/v1/pack_requests?select=*&id=eq.${encodeURIComponent(request.id)}&from_user_id=eq.${encodeURIComponent(user.id)}&status=eq.pending&limit=1`,
+        authHeaders,
+      );
+      const rawRequest = requestRows[0];
+      const payload = rawRequest ? parseSittingPayload(rawRequest) : null;
+      if (!rawRequest || !payload || payload.kind !== "sitting-request") {
+        res.status(409).json({ error: "An offer has already been accepted." });
+        return;
+      }
+      const response = await supabaseUserRequest(
+        `/rest/v1/pack_requests?id=eq.${encodeURIComponent(request.id)}&from_user_id=eq.${encodeURIComponent(user.id)}&status=eq.pending`,
+        {
+          method: "PATCH",
+          headers: {
+            ...authHeaders,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({
+            status: "accepted",
+            message: JSON.stringify({
+              ...payload,
+              acceptedOfferId: offer.id,
+            }),
+          }),
+        },
+      );
+      if (!response.ok) {
+        res.status(response.status).json({ error: await readProviderError(response) });
+        return;
+      }
+      const updatedRows = (await response.json()) as RecordValue[];
+      if (updatedRows.length === 0) {
+        res.status(409).json({ error: "An offer has already been accepted." });
+        return;
+      }
+      const updated = (await visibleSittingRequests(user, authHeaders)).find(
+        (item) => item.id === request.id,
+      );
+      res.json(AcceptSittingOfferResponse.parse(updated));
+    } catch (error) {
+      req.log.error({ err: error }, "Unable to accept pet-sitting offer");
+      res.status(502).json({ error: "Unable to accept this offer right now." });
+    }
+  },
+);
 
 router.get("/dogs", async (req, res) => {
   res.setHeader("Cache-Control", "private, no-store");

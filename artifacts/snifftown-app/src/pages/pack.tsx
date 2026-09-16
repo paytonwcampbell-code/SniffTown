@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { 
   useListDogs, 
   useListParks,
@@ -26,6 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Users, Shield, MapPin, Bone, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { CareExchange } from "@/components/care-exchange";
 
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
@@ -74,6 +75,9 @@ function ParkPackRows({
 
 export default function PackPage() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const defaultTab = searchParams.get("tab") || "mypack";
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: user, isLoading: isUserLoading } = useGetCurrentUser();
@@ -243,10 +247,11 @@ export default function PackPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="mypack" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2 mb-8 bg-secondary/50">
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-8 bg-secondary/50">
           <TabsTrigger value="mypack" className="data-[state=active]:bg-background">My Matches</TabsTrigger>
           <TabsTrigger value="localpacks" className="data-[state=active]:bg-background">Local Park Packs</TabsTrigger>
+          <TabsTrigger value="care" className="data-[state=active]:bg-background">Care Exchange</TabsTrigger>
         </TabsList>
 
         <TabsContent value="mypack" className="space-y-8 animate-in fade-in-50 duration-500">
@@ -492,6 +497,13 @@ export default function PackPage() {
               />
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="care" className="space-y-8 animate-in fade-in-50 duration-500">
+          <CareExchange
+            user={user}
+            myDogs={myDog ? [myDog] : []}
+          />
         </TabsContent>
       </Tabs>
     </div>

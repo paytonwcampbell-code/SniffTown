@@ -48,7 +48,11 @@ import type {
   ParkPackPost,
   ParkPackPostInput,
   RefreshSessionInput,
-  SendMessageResult
+  SendMessageResult,
+  SittingOffer,
+  SittingOfferInput,
+  SittingRequest,
+  SittingRequestInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1268,6 +1272,299 @@ export function useListPacks<TData = Awaited<ReturnType<typeof listPacks>>, TErr
 
 
 
+
+export const getListSittingRequestsUrl = () => {
+
+
+
+
+  return `/api/sitting-requests`
+}
+
+/**
+ * @summary List pet-sitting requests visible to the signed-in member
+ */
+export const listSittingRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<SittingRequest[]> => {
+
+  return customFetch<SittingRequest[]>(getListSittingRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSittingRequestsQueryKey = () => {
+    return [
+    `/api/sitting-requests`
+    ] as const;
+    }
+
+
+export const getListSittingRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listSittingRequests>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSittingRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSittingRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSittingRequests>>> = ({ signal }) => listSittingRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSittingRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSittingRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listSittingRequests>>>
+export type ListSittingRequestsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List pet-sitting requests visible to the signed-in member
+ */
+
+export function useListSittingRequests<TData = Awaited<ReturnType<typeof listSittingRequests>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSittingRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSittingRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSittingRequestUrl = () => {
+
+
+
+
+  return `/api/sitting-requests`
+}
+
+/**
+ * @summary Ask trusted pack members for pet-sitting help
+ */
+export const createSittingRequest = async (sittingRequestInput: SittingRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<SittingRequest> => {
+
+  return customFetch<SittingRequest>(getCreateSittingRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sittingRequestInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSittingRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSittingRequest>>, TError,{data: BodyType<SittingRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSittingRequest>>, TError,{data: BodyType<SittingRequestInput>}, TContext> => {
+
+const mutationKey = ['createSittingRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSittingRequest>>, {data: BodyType<SittingRequestInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSittingRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSittingRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createSittingRequest>>>
+    export type CreateSittingRequestMutationBody = BodyType<SittingRequestInput>
+    export type CreateSittingRequestMutationError = ErrorType<void>
+
+    /**
+ * @summary Ask trusted pack members for pet-sitting help
+ */
+export const useCreateSittingRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSittingRequest>>, TError,{data: BodyType<SittingRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSittingRequest>>,
+        TError,
+        {data: BodyType<SittingRequestInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSittingRequestMutationOptions(options));
+    }
+
+export const getCreateSittingOfferUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/sitting-requests/${requestId}/offers`
+}
+
+/**
+ * @summary Offer to help with a trusted pack request
+ */
+export const createSittingOffer = async (requestId: string,
+    sittingOfferInput: SittingOfferInput, options?: Parameters<typeof customFetch>[1]): Promise<SittingOffer> => {
+
+  return customFetch<SittingOffer>(getCreateSittingOfferUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sittingOfferInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSittingOfferMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSittingOffer>>, TError,{requestId: string;data: BodyType<SittingOfferInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSittingOffer>>, TError,{requestId: string;data: BodyType<SittingOfferInput>}, TContext> => {
+
+const mutationKey = ['createSittingOffer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSittingOffer>>, {requestId: string;data: BodyType<SittingOfferInput>}> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  createSittingOffer(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSittingOfferMutationResult = NonNullable<Awaited<ReturnType<typeof createSittingOffer>>>
+    export type CreateSittingOfferMutationBody = BodyType<SittingOfferInput>
+    export type CreateSittingOfferMutationError = ErrorType<void>
+
+    /**
+ * @summary Offer to help with a trusted pack request
+ */
+export const useCreateSittingOffer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSittingOffer>>, TError,{requestId: string;data: BodyType<SittingOfferInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSittingOffer>>,
+        TError,
+        {requestId: string;data: BodyType<SittingOfferInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSittingOfferMutationOptions(options));
+    }
+
+export const getAcceptSittingOfferUrl = (requestId: string,
+    offerId: string,) => {
+
+
+
+
+  return `/api/sitting-requests/${requestId}/offers/${offerId}/accept`
+}
+
+/**
+ * @summary Accept one offer for a pet-sitting request
+ */
+export const acceptSittingOffer = async (requestId: string,
+    offerId: string, options?: Parameters<typeof customFetch>[1]): Promise<SittingRequest> => {
+
+  return customFetch<SittingRequest>(getAcceptSittingOfferUrl(requestId,offerId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcceptSittingOfferMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptSittingOffer>>, TError,{requestId: string;offerId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptSittingOffer>>, TError,{requestId: string;offerId: string}, TContext> => {
+
+const mutationKey = ['acceptSittingOffer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptSittingOffer>>, {requestId: string;offerId: string}> = (props) => {
+          const {requestId,offerId} = props ?? {};
+
+          return  acceptSittingOffer(requestId,offerId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptSittingOfferMutationResult = NonNullable<Awaited<ReturnType<typeof acceptSittingOffer>>>
+
+    export type AcceptSittingOfferMutationError = ErrorType<void>
+
+    /**
+ * @summary Accept one offer for a pet-sitting request
+ */
+export const useAcceptSittingOffer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptSittingOffer>>, TError,{requestId: string;offerId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acceptSittingOffer>>,
+        TError,
+        {requestId: string;offerId: string},
+        TContext
+      > => {
+      return useMutation(getAcceptSittingOfferMutationOptions(options));
+    }
 
 export const getSignUpUrl = () => {
 

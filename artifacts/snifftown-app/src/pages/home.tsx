@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Users, Dog, ChevronRight, Heart, Shield, MessageSquare } from "lucide-react";
+import { MapPin, Users, Dog, ChevronRight, Heart, Shield, MessageSquare, Calendar } from "lucide-react";
 
 // Helper for initials
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
@@ -400,9 +400,16 @@ export default function Home() {
                 </Button>
               </>
             ) : (
-              <Button size="lg" asChild className="h-12 px-8 text-base rounded-full w-full sm:w-auto shadow-md hover:shadow-lg transition-all">
-                <Link href="/pack">View Your Matches</Link>
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                <Button size="lg" asChild className="h-12 px-8 text-base rounded-full w-full sm:w-auto shadow-md hover:shadow-lg transition-all">
+                  <Link href="/pack">View Your Matches</Link>
+                </Button>
+                <Button size="lg" variant="outline" asChild className="h-12 px-8 text-base rounded-full w-full sm:w-auto bg-primary/5 border-primary/20 text-primary hover:bg-primary/10">
+                  <Link href="/pack?tab=care">
+                    <Calendar className="mr-2 h-4 w-4" /> Trade Pet-Sitting
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>

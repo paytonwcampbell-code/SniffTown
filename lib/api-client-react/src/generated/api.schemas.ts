@@ -374,6 +374,57 @@ export interface Park {
   communityCreated: boolean;
   memberCount: number;
   isMember: boolean;
+  isCreator: boolean;
+}
+
+export interface ParkPackMember {
+  dogId: string;
+  dogName: string;
+  /** @nullable */
+  dogPhotoUrl: string | null;
+}
+
+export interface ParkPackPost {
+  id: string;
+  content: string;
+  createdAt: string;
+  authorDisplayName: string;
+  /** @nullable */
+  dogId: string | null;
+  /** @nullable */
+  dogName: string | null;
+  /** @nullable */
+  dogPhotoUrl: string | null;
+  isMine: boolean;
+}
+
+export interface ParkPackPostInput {
+  /**
+     * @minLength 1
+     * @maxLength 280
+     */
+  content: string;
+}
+
+export interface ParkPackDetail {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  slug: string;
+  /** @nullable */
+  address: string | null;
+  /** @nullable */
+  description: string | null;
+  offLeash: boolean;
+  communityCreated: boolean;
+  memberCount: number;
+  isMember: boolean;
+  isCreator: boolean;
+  /** @nullable */
+  members: ParkPackMember[] | null;
+  /** @nullable */
+  posts: ParkPackPost[] | null;
 }
 
 export interface CreateLocalParkPackInput {

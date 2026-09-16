@@ -42,8 +42,11 @@ import type {
   PackRequestResponse,
   PackRequestResponseInput,
   Park,
+  ParkPackDetail,
   ParkPackMembershipInput,
   ParkPackMembershipResult,
+  ParkPackPost,
+  ParkPackPostInput,
   RefreshSessionInput,
   SendMessageResult
 } from './api.schemas';
@@ -816,6 +819,228 @@ export const useUpdateParkPackMembership = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateParkPackMembershipMutationOptions(options));
+    }
+
+export const getGetParkPackDetailUrl = (parkId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}`
+}
+
+/**
+ * @summary Get public park-pack metadata and member-only community content
+ */
+export const getParkPackDetail = async (parkId: string, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackDetail> => {
+
+  return customFetch<ParkPackDetail>(getGetParkPackDetailUrl(parkId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetParkPackDetailQueryKey = (parkId: string,) => {
+    return [
+    `/api/parks/${parkId}`
+    ] as const;
+    }
+
+
+export const getGetParkPackDetailQueryOptions = <TData = Awaited<ReturnType<typeof getParkPackDetail>>, TError = ErrorType<void>>(parkId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParkPackDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetParkPackDetailQueryKey(parkId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getParkPackDetail>>> = ({ signal }) => getParkPackDetail(parkId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: parkId !== null && parkId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getParkPackDetail>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetParkPackDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getParkPackDetail>>>
+export type GetParkPackDetailQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get public park-pack metadata and member-only community content
+ */
+
+export function useGetParkPackDetail<TData = Awaited<ReturnType<typeof getParkPackDetail>>, TError = ErrorType<void>>(
+ parkId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParkPackDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetParkPackDetailQueryOptions(parkId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateParkPackPostUrl = (parkId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/posts`
+}
+
+/**
+ * @summary Create a short post in a park pack board
+ */
+export const createParkPackPost = async (parkId: string,
+    parkPackPostInput: ParkPackPostInput, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackPost> => {
+
+  return customFetch<ParkPackPost>(getCreateParkPackPostUrl(parkId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(parkPackPostInput)
+  }
+);}
+
+
+
+
+
+export const getCreateParkPackPostMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createParkPackPost>>, TError,{parkId: string;data: BodyType<ParkPackPostInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createParkPackPost>>, TError,{parkId: string;data: BodyType<ParkPackPostInput>}, TContext> => {
+
+const mutationKey = ['createParkPackPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createParkPackPost>>, {parkId: string;data: BodyType<ParkPackPostInput>}> = (props) => {
+          const {parkId,data} = props ?? {};
+
+          return  createParkPackPost(parkId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateParkPackPostMutationResult = NonNullable<Awaited<ReturnType<typeof createParkPackPost>>>
+    export type CreateParkPackPostMutationBody = BodyType<ParkPackPostInput>
+    export type CreateParkPackPostMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a short post in a park pack board
+ */
+export const useCreateParkPackPost = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createParkPackPost>>, TError,{parkId: string;data: BodyType<ParkPackPostInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createParkPackPost>>,
+        TError,
+        {parkId: string;data: BodyType<ParkPackPostInput>},
+        TContext
+      > => {
+      return useMutation(getCreateParkPackPostMutationOptions(options));
+    }
+
+export const getDeleteParkPackPostUrl = (parkId: string,
+    postId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/posts/${postId}`
+}
+
+/**
+ * @summary Delete your own park-pack post
+ */
+export const deleteParkPackPost = async (parkId: string,
+    postId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteParkPackPostUrl(parkId,postId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteParkPackPostMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteParkPackPost>>, TError,{parkId: string;postId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteParkPackPost>>, TError,{parkId: string;postId: string}, TContext> => {
+
+const mutationKey = ['deleteParkPackPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteParkPackPost>>, {parkId: string;postId: string}> = (props) => {
+          const {parkId,postId} = props ?? {};
+
+          return  deleteParkPackPost(parkId,postId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteParkPackPostMutationResult = NonNullable<Awaited<ReturnType<typeof deleteParkPackPost>>>
+
+    export type DeleteParkPackPostMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete your own park-pack post
+ */
+export const useDeleteParkPackPost = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteParkPackPost>>, TError,{parkId: string;postId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteParkPackPost>>,
+        TError,
+        {parkId: string;postId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteParkPackPostMutationOptions(options));
     }
 
 export const getListIncomingPackRequestsUrl = () => {

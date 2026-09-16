@@ -5,8 +5,13 @@ import {
   AddDogToPackResponse,
   CreateLocalParkPackBody,
   CreateLocalParkPackResponse,
+  CreateParkPackPostBody,
+  CreateParkPackPostResponse,
   CreateDogBody,
   CreateDogResponse,
+  DeleteParkPackPostParams,
+  GetParkPackDetailParams,
+  GetParkPackDetailResponse,
   GetMyDogResponse,
   UpdateMyDogBody,
   UpdateMyDogResponse,
@@ -31,6 +36,13 @@ import {
 } from "../lib/connectors";
 import { getAccessToken } from "../lib/session-auth";
 import { rankDogs, toDogWritePayload } from "../lib/dog-profile";
+import {
+  canViewPrivateParkPack,
+  isPackMembershipUniqueConflict,
+  normalizeParkPackPostBody,
+  serializeParkPackMember,
+  serializeParkPackPost,
+} from "../lib/park-pack";
 
 const router: IRouter = Router();
 
@@ -216,6 +228,7 @@ async function jsonRows(
 async function rpcRows(
   functionName: string,
   headers: Record<string, string> = {},
+  body: Record<string, unknown> = {},
 ): Promise<RecordValue[]> {
   const request = headers.Authorization ? supabaseUserRequest : supabaseRequest;
   const response = await request(`/rest/v1/rpc/${functionName}`, {
@@ -224,7 +237,7 @@ async function rpcRows(
       "Content-Type": "application/json",
       ...headers,
     },
-    body: "{}",
+    body: JSON.stringify(body),
   });
   if (!response.ok) {
     throw new Error(await readProviderError(response));
@@ -708,7 +721,7 @@ router.get("/parks", async (req, res) => {
     const [parks, packs, memberships] = await Promise.all([
       jsonRows("/rest/v1/parks?select=*&order=name.asc&limit=50"),
       jsonRows(
-        "/rest/v1/packs?select=id,name,location,is_public,tags&is_public=eq.true",
+        "/rest/v1/packs?select=id,name,location,is_public,tags,creator_id&is_public=eq.true",
       ),
       jsonRows("/rest/v1/pack_members?select=pack_id,user_id", authHeaders),
     ]);
@@ -737,12 +750,261 @@ router.get("/parks", async (req, res) => {
               String(membership.pack_id) === String(park.id) &&
               String(membership.user_id) === currentUserId,
           ),
+        isCreator:
+          Boolean(pack) &&
+          currentUserId !== null &&
+          String(pack?.creator_id) === currentUserId,
       };
     });
     res.json(ListParksResponse.parse(result));
   } catch (error) {
     req.log.error({ err: error }, "Unable to list parks");
     res.status(502).json({ error: "Unable to load parks right now." });
+  }
+});
+
+router.get("/parks/:parkId", async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  const params = GetParkPackDetailParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid park pack." });
+    return;
+  }
+
+  try {
+    const parkId = params.data.parkId;
+    const [parks, packs, memberships] = await Promise.all([
+      jsonRows(
+        `/rest/v1/parks?select=id,name,city,state,slug,description&id=eq.${encodeURIComponent(parkId)}&limit=1`,
+      ),
+      jsonRows(
+        `/rest/v1/packs?select=id,name,location,description,is_public,tags,creator_id&id=eq.${encodeURIComponent(parkId)}&is_public=eq.true&limit=1`,
+      ),
+      jsonRows("/rest/v1/pack_members?select=pack_id"),
+    ]);
+    const park = parks[0];
+    const pack = packs[0];
+    if (!park || !pack) {
+      res.status(404).json({ error: "Local park pack not found." });
+      return;
+    }
+
+    const tags = Array.isArray(pack.tags) ? pack.tags.map(String) : [];
+    const authHeaders = bearer(req);
+    let currentUserId: string | null = null;
+    let hasMembership = false;
+
+    if (authHeaders.Authorization) {
+      const userResponse = await supabaseUserRequest("/auth/v1/user", {
+        headers: authHeaders,
+      });
+      if (userResponse.ok) {
+        const user = (await userResponse.json()) as { id?: unknown };
+        currentUserId = typeof user.id === "string" ? user.id : null;
+      }
+      if (currentUserId) {
+        const ownMembership = await jsonRows(
+          `/rest/v1/pack_members?select=id&pack_id=eq.${encodeURIComponent(parkId)}&user_id=eq.${encodeURIComponent(currentUserId)}&limit=1`,
+          authHeaders,
+        );
+        hasMembership = ownMembership.length > 0;
+      }
+    }
+
+    const isCreator =
+      currentUserId !== null && String(pack.creator_id) === currentUserId;
+    const isMember = canViewPrivateParkPack(
+      currentUserId,
+      isCreator,
+      hasMembership,
+    );
+    const memberDogs = isMember
+      ? await rpcRows("get_pack_member_dogs_safe", authHeaders, {
+          target_pack_id: parkId,
+        })
+      : [];
+    const postRows = isMember
+      ? await rpcRows("get_pack_posts_with_authors", authHeaders, {
+          target_pack_id: parkId,
+        })
+      : [];
+
+    res.json(
+      GetParkPackDetailResponse.parse({
+        id: parkId,
+        name: String(park.name),
+        city: String(park.city ?? "Austin"),
+        state: String(park.state ?? "TX"),
+        slug: String(park.slug),
+        address: typeof pack.location === "string" ? pack.location : null,
+        description:
+          typeof park.description === "string"
+            ? park.description
+            : typeof pack.description === "string"
+              ? pack.description
+              : null,
+        offLeash: tags.includes("off-leash"),
+        communityCreated: tags.includes("community-created"),
+        memberCount: memberships.filter(
+          (membership) => String(membership.pack_id) === parkId,
+        ).length,
+        isMember,
+        isCreator,
+        members: isMember
+          ? memberDogs.map((member) => serializeParkPackMember(member))
+          : null,
+        posts: isMember
+          ? postRows.map((post) =>
+              serializeParkPackPost(post, memberDogs, currentUserId ?? ""),
+            )
+          : null,
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to load park pack detail");
+    res.status(502).json({ error: "Unable to load this park pack right now." });
+  }
+});
+
+router.post("/parks/:parkId/posts", async (req, res) => {
+  const body = CreateParkPackPostBody.safeParse(normalizeParkPackPostBody(req.body));
+  const token = getAccessToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Sign in to post in a park pack." });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: "Keep your park-pack post under 280 characters." });
+    return;
+  }
+
+  try {
+    const parkId = String(req.params.parkId);
+    const authHeaders = { Authorization: `Bearer ${token}` };
+    const userResponse = await supabaseUserRequest("/auth/v1/user", {
+      headers: authHeaders,
+    });
+    if (!userResponse.ok) {
+      res.status(401).json({ error: "Your session has expired." });
+      return;
+    }
+    const user = (await userResponse.json()) as { id: string };
+    const [packs, membership] = await Promise.all([
+      jsonRows(
+        `/rest/v1/packs?select=id,creator_id&id=eq.${encodeURIComponent(parkId)}&is_public=eq.true&limit=1`,
+      ),
+      jsonRows(
+        `/rest/v1/pack_members?select=id&pack_id=eq.${encodeURIComponent(parkId)}&user_id=eq.${encodeURIComponent(user.id)}&limit=1`,
+        authHeaders,
+      ),
+    ]);
+    if (!packs[0]) {
+      res.status(404).json({ error: "Local park pack not found." });
+      return;
+    }
+    const isCreator = String(packs[0].creator_id) === user.id;
+    if (membership.length === 0 && !isCreator) {
+      res.status(403).json({ error: "Join this park pack before posting." });
+      return;
+    }
+
+    const postResponse = await supabaseUserRequest("/rest/v1/pack_posts", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        pack_id: parkId,
+        author_id: user.id,
+        title: "Park pack note",
+        content: body.data.content,
+        post_type: "general",
+      }),
+    });
+    if (!postResponse.ok) {
+      res.status(postResponse.status).json({ error: await readProviderError(postResponse) });
+      return;
+    }
+    const inserted = (await postResponse.json()) as RecordValue[];
+    const insertedRow = inserted[0];
+    if (!insertedRow) {
+      res.status(502).json({ error: "The park-pack post could not be saved." });
+      return;
+    }
+
+    const memberDogs = await rpcRows("get_pack_member_dogs_safe", authHeaders, {
+      target_pack_id: parkId,
+    });
+    const postRows = await rpcRows("get_pack_posts_with_authors", authHeaders, {
+      target_pack_id: parkId,
+    });
+    const savedRow =
+      postRows.find((post) => String(post.id) === String(insertedRow.id)) ??
+      {
+        ...insertedRow,
+        author_display_name: "You",
+      };
+
+    res.status(201).json(
+      CreateParkPackPostResponse.parse(
+        serializeParkPackPost(savedRow, memberDogs, user.id),
+      ),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to create park pack post");
+    res.status(502).json({ error: "Unable to save this park-pack post right now." });
+  }
+});
+
+router.delete("/parks/:parkId/posts/:postId", async (req, res) => {
+  const params = DeleteParkPackPostParams.safeParse(req.params);
+  const token = getAccessToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Sign in to delete a park-pack post." });
+    return;
+  }
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid park-pack post." });
+    return;
+  }
+
+  try {
+    const authHeaders = { Authorization: `Bearer ${token}` };
+    const userResponse = await supabaseUserRequest("/auth/v1/user", {
+      headers: authHeaders,
+    });
+    if (!userResponse.ok) {
+      res.status(401).json({ error: "Your session has expired." });
+      return;
+    }
+    const user = (await userResponse.json()) as { id: string };
+    const response = await supabaseUserRequest(
+      `/rest/v1/pack_posts?id=eq.${encodeURIComponent(params.data.postId)}` +
+        `&pack_id=eq.${encodeURIComponent(params.data.parkId)}` +
+        `&author_id=eq.${encodeURIComponent(user.id)}`,
+      {
+        method: "DELETE",
+        headers: {
+          ...authHeaders,
+          Prefer: "return=representation",
+        },
+      },
+    );
+    if (!response.ok) {
+      res.status(response.status).json({ error: await readProviderError(response) });
+      return;
+    }
+    const deleted = (await response.json()) as RecordValue[];
+    if (deleted.length === 0) {
+      res.status(404).json({ error: "Park-pack post not found." });
+      return;
+    }
+    res.status(204).send();
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to delete park pack post");
+    res.status(502).json({ error: "Unable to delete this park-pack post right now." });
   }
 });
 
@@ -920,6 +1182,7 @@ router.post("/parks", async (req, res) => {
         communityCreated: true,
         memberCount: 1,
         isMember: true,
+        isCreator: true,
       }),
     );
   } catch (error) {
@@ -957,7 +1220,7 @@ router.post("/parks/:parkId/membership", async (req, res) => {
         `/rest/v1/parks?select=id&id=eq.${encodeURIComponent(parkId)}&limit=1`,
       ),
       jsonRows(
-        `/rest/v1/packs?select=id&id=eq.${encodeURIComponent(parkId)}&is_public=eq.true&limit=1`,
+        `/rest/v1/packs?select=id,creator_id&id=eq.${encodeURIComponent(parkId)}&is_public=eq.true&limit=1`,
       ),
     ]);
     if (!parks[0] || !packs[0]) {
@@ -972,7 +1235,15 @@ router.post("/parks/:parkId/membership", async (req, res) => {
       `${membershipPath}&select=id&limit=1`,
       authHeaders,
     );
+    const isCreator = String(packs[0].creator_id) === user.id;
+    if (body.data.action === "leave" && isCreator) {
+      res.status(409).json({
+        error: "Pack creators must remain members. Transfer pack ownership before leaving.",
+      });
+      return;
+    }
 
+    let isMember = existing.length > 0;
     if (body.data.action === "join" && existing.length === 0) {
       const response = await supabaseUserRequest("/rest/v1/pack_members", {
         method: "POST",
@@ -984,9 +1255,28 @@ router.post("/parks/:parkId/membership", async (req, res) => {
         body: JSON.stringify({ pack_id: parkId, user_id: user.id }),
       });
       if (!response.ok) {
-        res.status(response.status).json({ error: await readProviderError(response) });
-        return;
+        let providerBody: unknown = null;
+        try {
+          providerBody = await response.clone().json();
+        } catch {
+          // Keep the original provider response available for its error text.
+        }
+        if (
+          !isPackMembershipUniqueConflict(response.status, providerBody)
+        ) {
+          res.status(response.status).json({ error: await readProviderError(response) });
+          return;
+        }
+        const reread = await jsonRows(
+          `${membershipPath}&select=id&limit=1`,
+          authHeaders,
+        );
+        if (reread.length === 0) {
+          res.status(response.status).json({ error: await readProviderError(response) });
+          return;
+        }
       }
+      isMember = true;
     } else if (body.data.action === "leave" && existing.length > 0) {
       const response = await supabaseUserRequest(membershipPath, {
         method: "DELETE",
@@ -996,12 +1286,13 @@ router.post("/parks/:parkId/membership", async (req, res) => {
         res.status(response.status).json({ error: await readProviderError(response) });
         return;
       }
+      isMember = false;
     }
 
     res.json(
       UpdateParkPackMembershipResponse.parse({
         parkId,
-        isMember: body.data.action === "join",
+        isMember,
       }),
     );
   } catch (error) {

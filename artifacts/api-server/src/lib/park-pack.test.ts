@@ -1,0 +1,88 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  canViewPrivateParkPack,
+  isPackMembershipUniqueConflict,
+  normalizeParkPackPostBody,
+  serializeParkPackMember,
+  serializeParkPackPost,
+} from "./park-pack.ts";
+
+test("requires a current viewer before exposing private park-pack content", () => {
+  assert.equal(canViewPrivateParkPack(null, true, true), false);
+  assert.equal(canViewPrivateParkPack("member-1", false, true), true);
+  assert.equal(canViewPrivateParkPack("creator-1", true, false), true);
+});
+
+test("trims park-pack post content before the schema length check", () => {
+  assert.deepEqual(
+    normalizeParkPackPostBody({ content: "  Sunrise walk tomorrow?  " }),
+    { content: "Sunrise walk tomorrow?" },
+  );
+  assert.deepEqual(normalizeParkPackPostBody({ content: "   " }), { content: "" });
+});
+
+test("recognizes only the membership unique-key conflict for an idempotent join retry", () => {
+  assert.equal(
+    isPackMembershipUniqueConflict(409, {
+      code: "23505",
+      constraint: "pack_members_pack_id_user_id_key",
+      details: "Key (pack_id, user_id) already exists.",
+    }),
+    true,
+  );
+  assert.equal(
+    isPackMembershipUniqueConflict(409, {
+      code: "23505",
+      details: "Key (name) already exists.",
+    }),
+    false,
+  );
+  assert.equal(
+    isPackMembershipUniqueConflict(400, {
+      code: "23505",
+      details: "Key (pack_id, user_id) already exists.",
+    }),
+    false,
+  );
+});
+
+test("serializes dog-linked park-pack members without contact fields", () => {
+  assert.deepEqual(
+    serializeParkPackMember({
+      id: "dog-1",
+      user_id: "member-1",
+      name: "Mochi",
+      photo_url: null,
+    }),
+    { dogId: "dog-1", dogName: "Mochi", dogPhotoUrl: null },
+  );
+});
+
+test("links a board post to the author's dog and marks own posts", () => {
+  assert.deepEqual(
+    serializeParkPackPost(
+      {
+        id: "post-1",
+        author_id: "member-1",
+        content: "Sunrise walk tomorrow?",
+        created_at: "2026-03-06T08:00:00.000Z",
+        author_display_name: "Alex A.",
+        dog_name: "Mochi",
+        dog_photo_url: "https://example.test/mochi.jpg",
+      },
+      [{ id: "dog-1", user_id: "member-1", name: "Mochi", photo_url: null }],
+      "member-1",
+    ),
+    {
+      id: "post-1",
+      content: "Sunrise walk tomorrow?",
+      createdAt: "2026-03-06T08:00:00.000Z",
+      authorDisplayName: "Alex A.",
+      dogId: "dog-1",
+      dogName: "Mochi",
+      dogPhotoUrl: "https://example.test/mochi.jpg",
+      isMine: true,
+    },
+  );
+});

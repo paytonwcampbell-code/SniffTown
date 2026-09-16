@@ -1,29 +1,35 @@
 import { Feather } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  getListParksQueryKey,
   type Park,
   useListParks,
   useUpdateParkPackMembership,
 } from "@workspace/api-client-react";
 import { ActionButton, BrandMark } from "@/components/Brand";
+import { useSession } from "@/context/SessionContext";
 import { useColors } from "@/hooks/useColors";
+import { getParkListViewerQueryKey } from "@/lib/park-pack";
 
 type ParkRow = { kind: "heading"; id: string; title: string; subtitle: string } | { kind: "park"; id: string; park: Park };
 
 function ParkCard({ park }: { park: Park }) {
   const c = useColors();
+  const router = useRouter();
   const qc = useQueryClient();
+  const { user } = useSession();
+  const listQueryKey = getParkListViewerQueryKey(user?.id ?? null);
   const membership = useUpdateParkPackMembership({
     mutation: {
-      onSuccess: () => qc.invalidateQueries({ queryKey: getListParksQueryKey() }),
+      onSuccess: () => qc.invalidateQueries({ queryKey: listQueryKey }),
     },
   });
 
   const toggleMembership = () => {
+    if (park.isCreator) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     membership.mutate({ parkId: park.id, data: { action: park.isMember ? "leave" : "join" } });
   };
@@ -34,13 +40,20 @@ function ParkCard({ park }: { park: Park }) {
         <Feather name={park.offLeash ? "map-pin" : "users"} size={21} color={park.offLeash ? c.accentForeground : c.foreground} />
       </View>
       <View style={styles.cardBody}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.parkName, { color: c.foreground }]}>{park.name}</Text>
-          {park.communityCreated && <Text style={[styles.badge, { color: c.accentForeground, backgroundColor: c.accent }]}>COMMUNITY</Text>}
-        </View>
-        {!!park.address && <Text style={[styles.address, { color: c.mutedForeground }]}>{park.address}</Text>}
+        <Pressable
+          testID={`open-park-${park.id}`}
+          onPress={() => router.push(`/park/${park.id}`)}
+          style={({ pressed }) => ({ opacity: pressed ? 0.68 : 1 })}
+        >
+          <View style={styles.titleRow}>
+            <Text style={[styles.parkName, { color: c.foreground }]}>{park.name}</Text>
+            {park.communityCreated && <Text style={[styles.badge, { color: c.accentForeground, backgroundColor: c.accent }]}>COMMUNITY</Text>}
+            <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+          </View>
+          {!!park.address && <Text style={[styles.address, { color: c.mutedForeground }]}>{park.address}</Text>}
+        </Pressable>
         <Text style={[styles.members, { color: c.mutedForeground }]}>{park.memberCount} {park.memberCount === 1 ? "neighbor" : "neighbors"} in this pack</Text>
-        <ActionButton label={park.isMember ? "Joined" : "Join park pack"} secondary={park.isMember} disabled={membership.isPending} onPress={toggleMembership} icon={park.isMember ? "check" : "plus"} />
+        <ActionButton label={park.isCreator ? "Pack creator" : park.isMember ? "Joined" : "Join park pack"} secondary={park.isMember} disabled={membership.isPending || park.isCreator} onPress={toggleMembership} icon={park.isCreator ? "shield" : park.isMember ? "check" : "plus"} />
       </View>
     </View>
   );
@@ -49,7 +62,13 @@ function ParkCard({ park }: { park: Park }) {
 export default function Parks() {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const parks = useListParks();
+  const { ready, user } = useSession();
+  const parks = useListParks({
+    query: {
+      enabled: ready,
+      queryKey: getParkListViewerQueryKey(user?.id ?? null),
+    },
+  });
   const local = (parks.data ?? []).filter((park) => !park.offLeash);
   const offLeash = (parks.data ?? []).filter((park) => park.offLeash);
   const rows: ParkRow[] = [

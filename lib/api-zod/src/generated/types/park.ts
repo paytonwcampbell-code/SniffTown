@@ -18,4 +18,5 @@ export interface Park {
   communityCreated: boolean;
   memberCount: number;
   isMember: boolean;
+  isCreator: boolean;
 }

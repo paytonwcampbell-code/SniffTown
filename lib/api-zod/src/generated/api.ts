@@ -241,7 +241,8 @@ export const ListParksResponseItem = zod.object({
   "offLeash": zod.boolean(),
   "communityCreated": zod.boolean(),
   "memberCount": zod.number(),
-  "isMember": zod.boolean()
+  "isMember": zod.boolean(),
+  "isCreator": zod.boolean()
 })
 export const ListParksResponse = zod.array(ListParksResponseItem)
 
@@ -275,7 +276,8 @@ export const CreateLocalParkPackResponse = zod.object({
   "offLeash": zod.boolean(),
   "communityCreated": zod.boolean(),
   "memberCount": zod.number(),
-  "isMember": zod.boolean()
+  "isMember": zod.boolean(),
+  "isCreator": zod.boolean()
 })
 
 
@@ -294,6 +296,82 @@ export const UpdateParkPackMembershipResponse = zod.object({
   "parkId": zod.string(),
   "isMember": zod.boolean()
 })
+
+
+/**
+ * @summary Get public park-pack metadata and member-only community content
+ */
+export const GetParkPackDetailParams = zod.object({
+  "parkId": zod.coerce.string()
+})
+
+export const GetParkPackDetailResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "slug": zod.string(),
+  "address": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "offLeash": zod.boolean(),
+  "communityCreated": zod.boolean(),
+  "memberCount": zod.number(),
+  "isMember": zod.boolean(),
+  "isCreator": zod.boolean(),
+  "members": zod.array(zod.object({
+  "dogId": zod.string(),
+  "dogName": zod.string(),
+  "dogPhotoUrl": zod.string().nullable()
+})).nullable(),
+  "posts": zod.array(zod.object({
+  "id": zod.string(),
+  "content": zod.string(),
+  "createdAt": zod.string(),
+  "authorDisplayName": zod.string(),
+  "dogId": zod.string().nullable(),
+  "dogName": zod.string().nullable(),
+  "dogPhotoUrl": zod.string().nullable(),
+  "isMine": zod.boolean()
+})).nullable()
+})
+
+
+/**
+ * @summary Create a short post in a park pack board
+ */
+export const CreateParkPackPostParams = zod.object({
+  "parkId": zod.coerce.string()
+})
+
+export const createParkPackPostBodyContentMax = 280;
+
+
+
+export const CreateParkPackPostBody = zod.object({
+  "content": zod.string().min(1).max(createParkPackPostBodyContentMax)
+})
+
+export const CreateParkPackPostResponse = zod.object({
+  "id": zod.string(),
+  "content": zod.string(),
+  "createdAt": zod.string(),
+  "authorDisplayName": zod.string(),
+  "dogId": zod.string().nullable(),
+  "dogName": zod.string().nullable(),
+  "dogPhotoUrl": zod.string().nullable(),
+  "isMine": zod.boolean()
+})
+
+
+/**
+ * @summary Delete your own park-pack post
+ */
+export const DeleteParkPackPostParams = zod.object({
+  "parkId": zod.coerce.string(),
+  "postId": zod.coerce.string()
+})
+
+export const DeleteParkPackPostResponse = zod.void()
 
 
 /**

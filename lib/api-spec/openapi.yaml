@@ -230,6 +230,81 @@ paths:
           description: Authentication required
         "404":
           description: Local park pack not found
+        "409":
+          description: Pack creators must remain members
+  /parks/{parkId}:
+    get:
+      operationId: getParkPackDetail
+      tags: [parks]
+      summary: Get public park-pack metadata and member-only community content
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Park-pack detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkPackDetail"
+        "404":
+          description: Local park pack not found
+  /parks/{parkId}/posts:
+    post:
+      operationId: createParkPackPost
+      tags: [parks]
+      summary: Create a short post in a park pack board
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkPackPostInput"
+      responses:
+        "201":
+          description: Park-pack post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkPackPost"
+        "401":
+          description: Authentication required
+        "403":
+          description: Join the park pack before posting
+        "404":
+          description: Local park pack not found
+  /parks/{parkId}/posts/{postId}:
+    delete:
+      operationId: deleteParkPackPost
+      tags: [parks]
+      summary: Delete your own park-pack post
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Park-pack post deleted
+        "401":
+          description: Authentication required
+        "404":
+          description: Post not found
   /pack-requests/incoming:
     get:
       operationId: listIncomingPackRequests
@@ -774,7 +849,83 @@ components:
           type: number
         isMember:
           type: boolean
-      required: [id, name, city, state, slug, address, offLeash, communityCreated, memberCount, isMember]
+        isCreator:
+          type: boolean
+      required: [id, name, city, state, slug, address, offLeash, communityCreated, memberCount, isMember, isCreator]
+    ParkPackMember:
+      type: object
+      properties:
+        dogId:
+          type: string
+        dogName:
+          type: string
+        dogPhotoUrl:
+          type: ["string", "null"]
+      required: [dogId, dogName, dogPhotoUrl]
+    ParkPackPost:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+        authorDisplayName:
+          type: string
+        dogId:
+          type: ["string", "null"]
+        dogName:
+          type: ["string", "null"]
+        dogPhotoUrl:
+          type: ["string", "null"]
+        isMine:
+          type: boolean
+      required: [id, content, createdAt, authorDisplayName, dogId, dogName, dogPhotoUrl, isMine]
+    ParkPackPostInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required: [content]
+    ParkPackDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        slug:
+          type: string
+        address:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        offLeash:
+          type: boolean
+        communityCreated:
+          type: boolean
+        memberCount:
+          type: number
+        isMember:
+          type: boolean
+        isCreator:
+          type: boolean
+        members:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/ParkPackMember"
+        posts:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/ParkPackPost"
+      required: [id, name, city, state, slug, address, description, offLeash, communityCreated, memberCount, isMember, isCreator, members, posts]
     CreateLocalParkPackInput:
       type: object
       properties:

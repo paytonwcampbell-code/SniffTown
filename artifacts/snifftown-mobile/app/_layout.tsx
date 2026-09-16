@@ -30,6 +30,7 @@ function RootLayoutNav() {
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="dog/[id]" options={{ title: 'Dog profile' }} />
+      <Stack.Screen name="park/[id]" options={{ title: 'Park pack' }} />
       <Stack.Screen name="conversation/[id]" options={{ title: 'Conversation' }} />
     </Stack>
   );

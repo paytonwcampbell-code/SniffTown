@@ -45,8 +45,13 @@ import type {
   ParkPackDetail,
   ParkPackMembershipInput,
   ParkPackMembershipResult,
+  ParkPackModerationActionInput,
+  ParkPackModerationActionResult,
+  ParkPackModerationReport,
   ParkPackPost,
   ParkPackPostInput,
+  ParkPackPostReportInput,
+  ParkPackPostReportResult,
   RefreshSessionInput,
   SendMessageResult,
   SittingOffer,
@@ -1045,6 +1050,234 @@ export const useDeleteParkPackPost = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteParkPackPostMutationOptions(options));
+    }
+
+export const getReportParkPackPostUrl = (parkId: string,
+    postId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/posts/${postId}/reports`
+}
+
+/**
+ * Available only to signed-in park-pack members. A member may report each post once, with a maximum of five reports per hour.
+ * @summary Report a visible park-pack post
+ */
+export const reportParkPackPost = async (parkId: string,
+    postId: string,
+    parkPackPostReportInput: ParkPackPostReportInput, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackPostReportResult> => {
+
+  return customFetch<ParkPackPostReportResult>(getReportParkPackPostUrl(parkId,postId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(parkPackPostReportInput)
+  }
+);}
+
+
+
+
+
+export const getReportParkPackPostMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportParkPackPost>>, TError,{parkId: string;postId: string;data: BodyType<ParkPackPostReportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportParkPackPost>>, TError,{parkId: string;postId: string;data: BodyType<ParkPackPostReportInput>}, TContext> => {
+
+const mutationKey = ['reportParkPackPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportParkPackPost>>, {parkId: string;postId: string;data: BodyType<ParkPackPostReportInput>}> = (props) => {
+          const {parkId,postId,data} = props ?? {};
+
+          return  reportParkPackPost(parkId,postId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportParkPackPostMutationResult = NonNullable<Awaited<ReturnType<typeof reportParkPackPost>>>
+    export type ReportParkPackPostMutationBody = BodyType<ParkPackPostReportInput>
+    export type ReportParkPackPostMutationError = ErrorType<void>
+
+    /**
+ * @summary Report a visible park-pack post
+ */
+export const useReportParkPackPost = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportParkPackPost>>, TError,{parkId: string;postId: string;data: BodyType<ParkPackPostReportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportParkPackPost>>,
+        TError,
+        {parkId: string;postId: string;data: BodyType<ParkPackPostReportInput>},
+        TContext
+      > => {
+      return useMutation(getReportParkPackPostMutationOptions(options));
+    }
+
+export const getListParkPackModerationReportsUrl = (parkId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/moderation/reports`
+}
+
+/**
+ * Available only to the pack creator or an explicitly designated pack moderator. Reporters' identities are never returned.
+ * @summary List open reports for a park pack
+ */
+export const listParkPackModerationReports = async (parkId: string, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackModerationReport[]> => {
+
+  return customFetch<ParkPackModerationReport[]>(getListParkPackModerationReportsUrl(parkId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListParkPackModerationReportsQueryKey = (parkId: string,) => {
+    return [
+    `/api/parks/${parkId}/moderation/reports`
+    ] as const;
+    }
+
+
+export const getListParkPackModerationReportsQueryOptions = <TData = Awaited<ReturnType<typeof listParkPackModerationReports>>, TError = ErrorType<void>>(parkId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParkPackModerationReports>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListParkPackModerationReportsQueryKey(parkId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listParkPackModerationReports>>> = ({ signal }) => listParkPackModerationReports(parkId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: parkId !== null && parkId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listParkPackModerationReports>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListParkPackModerationReportsQueryResult = NonNullable<Awaited<ReturnType<typeof listParkPackModerationReports>>>
+export type ListParkPackModerationReportsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List open reports for a park pack
+ */
+
+export function useListParkPackModerationReports<TData = Awaited<ReturnType<typeof listParkPackModerationReports>>, TError = ErrorType<void>>(
+ parkId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParkPackModerationReports>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListParkPackModerationReportsQueryOptions(parkId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getModerateParkPackPostReportUrl = (parkId: string,
+    reportId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/moderation/reports/${reportId}`
+}
+
+/**
+ * Available only to the pack creator or an explicitly designated pack moderator.
+ * @summary Hide a reported post or dismiss its report
+ */
+export const moderateParkPackPostReport = async (parkId: string,
+    reportId: string,
+    parkPackModerationActionInput: ParkPackModerationActionInput, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackModerationActionResult> => {
+
+  return customFetch<ParkPackModerationActionResult>(getModerateParkPackPostReportUrl(parkId,reportId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(parkPackModerationActionInput)
+  }
+);}
+
+
+
+
+
+export const getModerateParkPackPostReportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moderateParkPackPostReport>>, TError,{parkId: string;reportId: string;data: BodyType<ParkPackModerationActionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof moderateParkPackPostReport>>, TError,{parkId: string;reportId: string;data: BodyType<ParkPackModerationActionInput>}, TContext> => {
+
+const mutationKey = ['moderateParkPackPostReport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof moderateParkPackPostReport>>, {parkId: string;reportId: string;data: BodyType<ParkPackModerationActionInput>}> = (props) => {
+          const {parkId,reportId,data} = props ?? {};
+
+          return  moderateParkPackPostReport(parkId,reportId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ModerateParkPackPostReportMutationResult = NonNullable<Awaited<ReturnType<typeof moderateParkPackPostReport>>>
+    export type ModerateParkPackPostReportMutationBody = BodyType<ParkPackModerationActionInput>
+    export type ModerateParkPackPostReportMutationError = ErrorType<void>
+
+    /**
+ * @summary Hide a reported post or dismiss its report
+ */
+export const useModerateParkPackPostReport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moderateParkPackPostReport>>, TError,{parkId: string;reportId: string;data: BodyType<ParkPackModerationActionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof moderateParkPackPostReport>>,
+        TError,
+        {parkId: string;reportId: string;data: BodyType<ParkPackModerationActionInput>},
+        TContext
+      > => {
+      return useMutation(getModerateParkPackPostReportMutationOptions(options));
     }
 
 export const getListIncomingPackRequestsUrl = () => {

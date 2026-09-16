@@ -7,7 +7,8 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "test": "node --experimental-strip-types --test src/lib/dog-profile.test.ts src/lib/park-pack.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/dog-profile.test.ts src/lib/park-pack.test.ts && pnpm run test:moderation",
+    "test:moderation": "esbuild src/routes/community-moderation.test.ts --bundle --platform=node --format=esm --external:express --external:@replit/connectors-sdk --outfile=dist/community-moderation.test.mjs && node --test dist/community-moderation.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

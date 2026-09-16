@@ -35,6 +35,53 @@ export function isPackMembershipUniqueConflict(
   return details.includes("pack_id") && details.includes("user_id");
 }
 
+export function moderationProviderError(
+  providerMessage: string,
+  operation: "report" | "moderation",
+) {
+  const message = providerMessage.toLowerCase();
+  if (message.includes("rate limit")) {
+    return {
+      status: 429,
+      message: "You have reached the report limit. Try again in an hour.",
+    };
+  }
+  if (message.includes("already reported")) {
+    return { status: 409, message: "You have already reported this post." };
+  }
+  if (message.includes("not found")) {
+    return {
+      status: 404,
+      message:
+        operation === "report"
+          ? "This visible park-pack post was not found."
+          : "This open moderation report was not found.",
+    };
+  }
+  if (
+    message.includes("only park-pack moderators") ||
+    message.includes("join this park pack")
+  ) {
+    return {
+      status: 403,
+      message:
+        operation === "report"
+          ? "Join this park pack before reporting posts."
+          : "Only this pack's creator or moderators can review reports.",
+    };
+  }
+  if (message.includes("your own park-pack post")) {
+    return { status: 400, message: "You cannot report your own park-pack post." };
+  }
+  return {
+    status: 502,
+    message:
+      operation === "report"
+        ? "Unable to submit this report right now."
+        : "Unable to save this moderation action right now.",
+  };
+}
+
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
@@ -44,6 +91,21 @@ export function serializeParkPackMember(row: ParkPackDogRow) {
     dogId: String(row.id),
     dogName: text(row.name) ?? "Neighborhood dog",
     dogPhotoUrl: text(row.photo_url),
+  };
+}
+
+export function serializeParkPackModerationReport(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    postId: String(row.post_id),
+    postContent: text(row.post_content) ?? "",
+    authorDisplayName: text(row.author_display_name) ?? "Pack Member",
+    reason: String(row.reason),
+    details: text(row.details),
+    createdAt:
+      typeof row.created_at === "string"
+        ? row.created_at
+        : new Date(0).toISOString(),
   };
 }
 

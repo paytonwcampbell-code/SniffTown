@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   canViewPrivateParkPack,
   isPackMembershipUniqueConflict,
+  moderationProviderError,
   normalizeParkPackPostBody,
+  serializeParkPackModerationReport,
   serializeParkPackMember,
   serializeParkPackPost,
 } from "./park-pack.ts";
@@ -83,6 +85,49 @@ test("links a board post to the author's dog and marks own posts", () => {
       dogName: "Mochi",
       dogPhotoUrl: "https://example.test/mochi.jpg",
       isMine: true,
+    },
+  );
+});
+
+test("maps report limits, duplicates, and membership errors to explicit safe responses", () => {
+  assert.deepEqual(
+    moderationProviderError("Report rate limit reached. Try again in an hour.", "report"),
+    {
+      status: 429,
+      message: "You have reached the report limit. Try again in an hour.",
+    },
+  );
+  assert.deepEqual(
+    moderationProviderError("You have already reported this post.", "report"),
+    { status: 409, message: "You have already reported this post." },
+  );
+  assert.deepEqual(
+    moderationProviderError("Join this park pack before reporting posts.", "report"),
+    { status: 403, message: "Join this park pack before reporting posts." },
+  );
+});
+
+test("does not expose reporter identity in moderation report serialization", () => {
+  assert.deepEqual(
+    serializeParkPackModerationReport({
+      id: "report-1",
+      post_id: "post-1",
+      post_content: "Repeated promotion",
+      author_display_name: "Alex A.",
+      reason: "spam",
+      details: "Seen several times.",
+      reporter_id: "must-not-leak",
+      reporter_email: "must-not-leak@example.test",
+      created_at: "2026-09-16T10:00:00.000Z",
+    }),
+    {
+      id: "report-1",
+      postId: "post-1",
+      postContent: "Repeated promotion",
+      authorDisplayName: "Alex A.",
+      reason: "spam",
+      details: "Seen several times.",
+      createdAt: "2026-09-16T10:00:00.000Z",
     },
   );
 });

@@ -307,6 +307,107 @@ paths:
           description: Authentication required
         "404":
           description: Post not found
+  /parks/{parkId}/posts/{postId}/reports:
+    post:
+      operationId: reportParkPackPost
+      tags: [parks]
+      summary: Report a visible park-pack post
+      description: Available only to signed-in park-pack members. A member may report each post once, with a maximum of five reports per hour.
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkPackPostReportInput"
+      responses:
+        "201":
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkPackPostReportResult"
+        "401":
+          description: Authentication required
+        "403":
+          description: Join the park pack before reporting
+        "404":
+          description: Visible post not found in this park pack
+        "409":
+          description: The member has already reported this post
+        "429":
+          description: Report rate limit reached
+  /parks/{parkId}/moderation/reports:
+    get:
+      operationId: listParkPackModerationReports
+      tags: [parks]
+      summary: List open reports for a park pack
+      description: Available only to the pack creator or an explicitly designated pack moderator. Reporters' identities are never returned.
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Up to 50 open reports, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkPackModerationReport"
+        "401":
+          description: Authentication required
+        "403":
+          description: Pack moderator access required
+  /parks/{parkId}/moderation/reports/{reportId}:
+    post:
+      operationId: moderateParkPackPostReport
+      tags: [parks]
+      summary: Hide a reported post or dismiss its report
+      description: Available only to the pack creator or an explicitly designated pack moderator.
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkPackModerationActionInput"
+      responses:
+        "200":
+          description: Report moderated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkPackModerationActionResult"
+        "401":
+          description: Authentication required
+        "403":
+          description: Pack moderator access required
+        "404":
+          description: Open report not found
   /pack-requests/incoming:
     get:
       operationId: listIncomingPackRequests
@@ -978,6 +1079,66 @@ components:
           minLength: 1
           maxLength: 280
       required: [content]
+    ParkPackPostReportInput:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [spam, harassment, unsafe, other]
+        details:
+          type: string
+          maxLength: 500
+      required: [reason]
+    ParkPackPostReportResult:
+      type: object
+      properties:
+        reportId:
+          type: string
+        status:
+          type: string
+          enum: [open]
+      required: [reportId, status]
+    ParkPackModerationReport:
+      type: object
+      properties:
+        id:
+          type: string
+        postId:
+          type: string
+        postContent:
+          type: string
+        authorDisplayName:
+          type: string
+        reason:
+          type: string
+          enum: [spam, harassment, unsafe, other]
+        details:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, postId, postContent, authorDisplayName, reason, details, createdAt]
+    ParkPackModerationActionInput:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [hide, dismiss]
+      required: [action]
+    ParkPackModerationActionResult:
+      type: object
+      properties:
+        reportId:
+          type: string
+        postId:
+          type: string
+        status:
+          type: string
+          enum: [actioned, dismissed]
+        action:
+          type: string
+          enum: [hide, dismiss]
+      required: [reportId, postId, status, action]
     ParkPackDetail:
       type: object
       properties:

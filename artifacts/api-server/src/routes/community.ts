@@ -7,6 +7,14 @@ import {
   CreateLocalParkPackResponse,
   CreateParkPackPostBody,
   CreateParkPackPostResponse,
+  ListParkPackModerationReportsParams,
+  ListParkPackModerationReportsResponse,
+  ModerateParkPackPostReportBody,
+  ModerateParkPackPostReportParams,
+  ModerateParkPackPostReportResponse,
+  ReportParkPackPostBody,
+  ReportParkPackPostParams,
+  ReportParkPackPostResponse,
   CreateDogBody,
   CreateDogResponse,
   DeleteParkPackPostParams,
@@ -47,7 +55,9 @@ import { rankDogs, toDogWritePayload } from "../lib/dog-profile";
 import {
   canViewPrivateParkPack,
   isPackMembershipUniqueConflict,
+  moderationProviderError,
   normalizeParkPackPostBody,
+  serializeParkPackModerationReport,
   serializeParkPackMember,
   serializeParkPackPost,
 } from "../lib/park-pack";
@@ -1389,6 +1399,158 @@ router.delete("/parks/:parkId/posts/:postId", async (req, res) => {
     res.status(502).json({ error: "Unable to delete this park-pack post right now." });
   }
 });
+
+router.post("/parks/:parkId/posts/:postId/reports", async (req, res) => {
+  const params = ReportParkPackPostParams.safeParse(req.params);
+  const body = ReportParkPackPostBody.safeParse(req.body);
+  const user = await currentUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to report a park-pack post." });
+    return;
+  }
+  if (!params.success || !body.success) {
+    res.status(400).json({
+      error: "Choose a report reason and keep any details under 500 characters.",
+    });
+    return;
+  }
+
+  try {
+    const response = await supabaseUserRequest("/rest/v1/rpc/report_pack_post", {
+      method: "POST",
+      headers: {
+        ...bearer(req),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        target_pack_id: params.data.parkId,
+        target_post_id: params.data.postId,
+        report_reason: body.data.reason,
+        report_details: body.data.details?.trim() || null,
+      }),
+    });
+    if (!response.ok) {
+      const error = await readProviderError(response);
+      const mapped = moderationProviderError(error, "report");
+      res.status(mapped.status).json({ error: mapped.message });
+      return;
+    }
+    const row = ((await response.json()) as RecordValue[])[0];
+    if (!row?.report_id) {
+      res.status(502).json({ error: "The report could not be saved." });
+      return;
+    }
+    res.status(201).json(
+      ReportParkPackPostResponse.parse({
+        reportId: String(row.report_id),
+        status: String(row.status ?? "open"),
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to report park pack post");
+    res.status(502).json({ error: "Unable to submit this report right now." });
+  }
+});
+
+router.get("/parks/:parkId/moderation/reports", async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  const params = ListParkPackModerationReportsParams.safeParse(req.params);
+  const user = await currentUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to review park-pack reports." });
+    return;
+  }
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid park pack." });
+    return;
+  }
+
+  try {
+    const response = await supabaseUserRequest(
+      "/rest/v1/rpc/get_pack_post_reports_for_moderation",
+      {
+        method: "POST",
+        headers: {
+          ...bearer(req),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ target_pack_id: params.data.parkId }),
+      },
+    );
+    if (!response.ok) {
+      const error = await readProviderError(response);
+      const mapped = moderationProviderError(error, "moderation");
+      res.status(mapped.status).json({ error: mapped.message });
+      return;
+    }
+    const rows = (await response.json()) as RecordValue[];
+    res.json(
+      ListParkPackModerationReportsResponse.parse(
+        rows.map(serializeParkPackModerationReport),
+      ),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to load park pack moderation reports");
+    res.status(502).json({ error: "Unable to load moderation reports right now." });
+  }
+});
+
+router.post(
+  "/parks/:parkId/moderation/reports/:reportId",
+  async (req, res) => {
+    const params = ModerateParkPackPostReportParams.safeParse(req.params);
+    const body = ModerateParkPackPostReportBody.safeParse(req.body);
+    const user = await currentUser(req);
+    if (!user) {
+      res.status(401).json({ error: "Sign in to moderate park-pack reports." });
+      return;
+    }
+    if (!params.success || !body.success) {
+      res.status(400).json({ error: "Choose whether to hide the post or dismiss the report." });
+      return;
+    }
+
+    try {
+      const response = await supabaseUserRequest(
+        "/rest/v1/rpc/moderate_pack_post_report",
+        {
+          method: "POST",
+          headers: {
+            ...bearer(req),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            target_pack_id: params.data.parkId,
+            target_report_id: params.data.reportId,
+            moderation_action: body.data.action,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const error = await readProviderError(response);
+        const mapped = moderationProviderError(error, "moderation");
+        res.status(mapped.status).json({ error: mapped.message });
+        return;
+      }
+      const row = ((await response.json()) as RecordValue[])[0];
+      if (!row?.report_id || !row.post_id) {
+        res.status(502).json({ error: "The moderation action could not be saved." });
+        return;
+      }
+      res.json(
+        ModerateParkPackPostReportResponse.parse({
+          reportId: String(row.report_id),
+          postId: String(row.post_id),
+          status: String(row.status),
+          action: String(row.action),
+        }),
+      );
+    } catch (error) {
+      req.log.error({ err: error }, "Unable to moderate park pack report");
+      res.status(502).json({ error: "Unable to save this moderation action right now." });
+    }
+  },
+);
 
 router.post("/parks", async (req, res) => {
   const body = CreateLocalParkPackBody.safeParse(req.body);

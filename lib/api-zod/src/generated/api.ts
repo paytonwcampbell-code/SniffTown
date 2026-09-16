@@ -375,6 +375,71 @@ export const DeleteParkPackPostResponse = zod.void()
 
 
 /**
+ * Available only to signed-in park-pack members. A member may report each post once, with a maximum of five reports per hour.
+ * @summary Report a visible park-pack post
+ */
+export const ReportParkPackPostParams = zod.object({
+  "parkId": zod.coerce.string(),
+  "postId": zod.coerce.string()
+})
+
+export const reportParkPackPostBodyDetailsMax = 500;
+
+
+
+export const ReportParkPackPostBody = zod.object({
+  "reason": zod.enum(['spam', 'harassment', 'unsafe', 'other']),
+  "details": zod.string().max(reportParkPackPostBodyDetailsMax).optional()
+})
+
+export const ReportParkPackPostResponse = zod.object({
+  "reportId": zod.string(),
+  "status": zod.enum(['open'])
+})
+
+
+/**
+ * Available only to the pack creator or an explicitly designated pack moderator. Reporters' identities are never returned.
+ * @summary List open reports for a park pack
+ */
+export const ListParkPackModerationReportsParams = zod.object({
+  "parkId": zod.coerce.string()
+})
+
+export const ListParkPackModerationReportsResponseItem = zod.object({
+  "id": zod.string(),
+  "postId": zod.string(),
+  "postContent": zod.string(),
+  "authorDisplayName": zod.string(),
+  "reason": zod.enum(['spam', 'harassment', 'unsafe', 'other']),
+  "details": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListParkPackModerationReportsResponse = zod.array(ListParkPackModerationReportsResponseItem)
+
+
+/**
+ * Available only to the pack creator or an explicitly designated pack moderator.
+ * @summary Hide a reported post or dismiss its report
+ */
+export const ModerateParkPackPostReportParams = zod.object({
+  "parkId": zod.coerce.string(),
+  "reportId": zod.coerce.string()
+})
+
+export const ModerateParkPackPostReportBody = zod.object({
+  "action": zod.enum(['hide', 'dismiss'])
+})
+
+export const ModerateParkPackPostReportResponse = zod.object({
+  "reportId": zod.string(),
+  "postId": zod.string(),
+  "status": zod.enum(['actioned', 'dismissed']),
+  "action": zod.enum(['hide', 'dismiss'])
+})
+
+
+/**
  * @summary List pending pack requests for the signed-in member
  */
 export const ListIncomingPackRequestsResponseItem = zod.object({

@@ -1,16 +1,21 @@
 import { Feather } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  type ParkPackPostReportInput,
   type ParkPackDetail,
   useCreateParkPackPost,
   useDeleteParkPackPost,
   useGetParkPackDetail,
+  useListParkPackModerationReports,
+  useModerateParkPackPostReport,
+  useReportParkPackPost,
   useUpdateParkPackMembership,
 } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import {
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -29,12 +34,38 @@ import {
   canRenderPrivateParkPackContent,
   getParkListViewerQueryKey,
   getParkPackDetailViewerQueryKey,
+  getParkPackModerationReportsViewerQueryKey,
 } from "@/lib/park-pack";
 
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Recently";
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+const reportReasons: Array<{
+  value: ParkPackPostReportInput["reason"];
+  label: string;
+  description: string;
+}> = [
+  { value: "spam", label: "Spam", description: "Unwanted promotion or repeated content" },
+  { value: "harassment", label: "Harassment", description: "Bullying, threats, or targeted abuse" },
+  { value: "unsafe", label: "Unsafe", description: "Could put a dog or neighbor at risk" },
+  { value: "other", label: "Other", description: "Something else that needs a review" },
+];
+
+function errorStatus(error: unknown) {
+  return typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof error.status === "number"
+    ? error.status
+    : null;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof Error) || !error.message) return fallback;
+  return error.message.replace(/^HTTP \d+(?: [^:]*)?:\s*/, "");
 }
 
 function MemberRow({
@@ -74,9 +105,27 @@ export default function ParkPackDetailScreen() {
   const { ready, user } = useSession();
   const viewerId = user?.id ?? null;
   const [content, setContent] = useState("");
+  const [reportingPostId, setReportingPostId] = useState<string | null>(null);
+  const [reportReason, setReportReason] =
+    useState<ParkPackPostReportInput["reason"]>("spam");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportedPostIds, setReportedPostIds] = useState<Set<string>>(() => new Set());
+  const [reportMessage, setReportMessage] = useState<{
+    postId: string;
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [moderationMessage, setModerationMessage] = useState<string | null>(null);
   const detailQueryKey = getParkPackDetailViewerQueryKey(parkId, viewerId);
   const detail = useGetParkPackDetail(parkId, {
     query: { enabled: ready, queryKey: detailQueryKey },
+  });
+  const canAccessPrivateContent = canRenderPrivateParkPackContent(viewerId, detail.data);
+  const moderationReports = useListParkPackModerationReports(parkId, {
+    query: {
+      enabled: ready && Boolean(parkId) && canAccessPrivateContent,
+      queryKey: getParkPackModerationReportsViewerQueryKey(parkId, viewerId),
+    },
   });
   const refreshDetail = () =>
     queryClient.invalidateQueries({ queryKey: detailQueryKey });
@@ -101,6 +150,8 @@ export default function ParkPackDetailScreen() {
   const deletePost = useDeleteParkPackPost({
     mutation: { onSuccess: refreshDetail },
   });
+  const reportPost = useReportParkPackPost();
+  const moderateReport = useModerateParkPackPostReport();
 
   if (!parkId || detail.isLoading) {
     return (
@@ -123,11 +174,19 @@ export default function ParkPackDetailScreen() {
   }
 
   const park = detail.data;
-  const canRenderPrivateContent =
-    !detail.isFetching && canRenderPrivateParkPackContent(viewerId, park);
+  const canRenderPrivateContent = !detail.isFetching && canAccessPrivateContent;
   const isCreator = canRenderPrivateContent && park.isCreator;
   const members = canRenderPrivateContent ? park.members ?? [] : [];
   const posts = canRenderPrivateContent ? park.posts ?? [] : [];
+  const moderationForbidden = errorStatus(moderationReports.error) === 403;
+  // The detail response intentionally does not disclose designated moderators.
+  // A member-only request lets moderators see the queue, while a 403 keeps it
+  // completely absent for other members.
+  const canReviewReports =
+    canRenderPrivateContent &&
+    !moderationForbidden &&
+    (isCreator || moderationReports.isSuccess);
+  const visibleModerationReports = (moderationReports.data ?? []).slice(0, 10);
   const submitPost = () => {
     const trimmed = content.trim();
     if (!canRenderPrivateContent || !trimmed || createPost.isPending) return;
@@ -141,6 +200,100 @@ export default function ParkPackDetailScreen() {
       parkId,
       data: { action: canRenderPrivateContent ? "leave" : "join" },
     });
+  };
+  const startReport = (postId: string) => {
+    if (reportPost.isPending || reportedPostIds.has(postId)) return;
+    setReportingPostId(postId);
+    setReportReason("spam");
+    setReportDetails("");
+    setReportMessage(null);
+  };
+  const submitReport = (postId: string) => {
+    const details = reportDetails.trim();
+    if (
+      reportPost.isPending ||
+      reportedPostIds.has(postId) ||
+      details.length > 500
+    ) {
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    reportPost.mutate(
+      {
+        parkId,
+        postId,
+        data: { reason: reportReason, ...(details ? { details } : {}) },
+      },
+      {
+        onSuccess: () => {
+          setReportedPostIds((ids) => new Set(ids).add(postId));
+          setReportingPostId(null);
+          setReportMessage({
+            postId,
+            tone: "success",
+            text: "Thanks. Your report was sent to the pack moderators.",
+          });
+        },
+        onError: (error) => {
+          if (errorStatus(error) === 409) {
+            setReportedPostIds((ids) => new Set(ids).add(postId));
+            setReportingPostId(null);
+            setReportMessage({
+              postId,
+              tone: "success",
+              text: "You already reported this post. Thank you for helping keep the pack safe.",
+            });
+            return;
+          }
+          setReportMessage({
+            postId,
+            tone: "error",
+            text: errorMessage(error, "We couldn't send your report. Please try again."),
+          });
+        },
+      },
+    );
+  };
+  const confirmModeration = (
+    reportId: string,
+    action: "hide" | "dismiss",
+  ) => {
+    if (moderateReport.isPending) return;
+    const isHide = action === "hide";
+    Alert.alert(
+      isHide ? "Hide this post?" : "Dismiss this report?",
+      isHide
+        ? "This removes the post from the pack board. This action cannot be undone."
+        : "This closes the report and leaves the post visible.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: isHide ? "Hide post" : "Dismiss report",
+          style: isHide ? "destructive" : "default",
+          onPress: () => {
+            setModerationMessage(null);
+            moderateReport.mutate(
+              { parkId, reportId, data: { action } },
+              {
+                onSuccess: () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  setModerationMessage(
+                    isHide ? "Post hidden from the pack board." : "Report dismissed.",
+                  );
+                  refreshDetail();
+                  moderationReports.refetch();
+                },
+                onError: (error: unknown) => {
+                  setModerationMessage(
+                    errorMessage(error, "We couldn't save that moderation action. Please try again."),
+                  );
+                },
+              },
+            );
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -291,7 +444,7 @@ export default function ParkPackDetailScreen() {
                             </Text>
                           </View>
                         </Pressable>
-                        {post.isMine && (
+                        {post.isMine ? (
                           <Pressable
                             testID={`delete-park-post-${post.id}`}
                             accessibilityLabel="Delete post"
@@ -301,14 +454,250 @@ export default function ParkPackDetailScreen() {
                           >
                             <Feather name="trash-2" size={18} color={c.mutedForeground} />
                           </Pressable>
+                        ) : (
+                          <Pressable
+                            testID={`report-park-post-${post.id}`}
+                            accessibilityLabel={reportedPostIds.has(post.id) ? "Post reported" : "Report post"}
+                            disabled={reportPost.isPending || reportedPostIds.has(post.id)}
+                            onPress={() => startReport(post.id)}
+                            hitSlop={10}
+                            style={({ pressed }) => [
+                              styles.reportTrigger,
+                              {
+                                borderColor: c.border,
+                                opacity:
+                                  reportPost.isPending || reportedPostIds.has(post.id)
+                                    ? 0.55
+                                    : pressed
+                                      ? 0.7
+                                      : 1,
+                              },
+                            ]}
+                          >
+                            <Feather
+                              name={reportedPostIds.has(post.id) ? "check" : "flag"}
+                              size={14}
+                              color={c.mutedForeground}
+                            />
+                            <Text style={[styles.reportTriggerText, { color: c.mutedForeground }]}>
+                              {reportedPostIds.has(post.id) ? "Reported" : "Report"}
+                            </Text>
+                          </Pressable>
                         )}
                       </View>
                       <Text style={[styles.postContent, { color: c.foreground }]}>{post.content}</Text>
+                      {reportingPostId === post.id && (
+                        <View
+                          style={[
+                            styles.reportForm,
+                            { backgroundColor: c.secondary, borderColor: c.border },
+                          ]}
+                        >
+                          <Text style={[styles.reportTitle, { color: c.foreground }]}>
+                            Report this post
+                          </Text>
+                          <Text style={[styles.reportCopy, { color: c.mutedForeground }]}>
+                            Choose the closest reason. Your identity is not shared with the post author.
+                          </Text>
+                          <View style={styles.reasonList}>
+                            {reportReasons.map((reason) => {
+                              const selected = reportReason === reason.value;
+                              return (
+                                <Pressable
+                                  key={reason.value}
+                                  accessibilityRole="radio"
+                                  accessibilityState={{ selected }}
+                                  onPress={() => setReportReason(reason.value)}
+                                  style={[
+                                    styles.reasonOption,
+                                    {
+                                      borderColor: selected ? c.primary : c.border,
+                                      backgroundColor: selected ? c.card : "transparent",
+                                    },
+                                  ]}
+                                >
+                                  <Feather
+                                    name={selected ? "check-circle" : "circle"}
+                                    size={17}
+                                    color={selected ? c.primary : c.mutedForeground}
+                                  />
+                                  <View style={styles.reasonCopy}>
+                                    <Text style={[styles.reasonLabel, { color: c.foreground }]}>
+                                      {reason.label}
+                                    </Text>
+                                    <Text style={[styles.reasonDescription, { color: c.mutedForeground }]}>
+                                      {reason.description}
+                                    </Text>
+                                  </View>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+                          <TextInput
+                            testID={`report-details-${post.id}`}
+                            value={reportDetails}
+                            onChangeText={setReportDetails}
+                            multiline
+                            maxLength={500}
+                            placeholder="Add details (optional)"
+                            placeholderTextColor={c.mutedForeground}
+                            style={[
+                              styles.reportDetails,
+                              { color: c.foreground, borderColor: c.border, backgroundColor: c.card },
+                            ]}
+                          />
+                          <View style={styles.reportFooter}>
+                            <Text style={[styles.characterCount, { color: c.mutedForeground }]}>
+                              {reportDetails.length}/500
+                            </Text>
+                            <View style={styles.reportActions}>
+                              <Pressable
+                                onPress={() => setReportingPostId(null)}
+                                disabled={reportPost.isPending}
+                                hitSlop={8}
+                              >
+                                <Text style={[styles.cancelText, { color: c.foreground }]}>Cancel</Text>
+                              </Pressable>
+                              <ActionButton
+                                label={reportPost.isPending ? "Sending…" : "Send report"}
+                                disabled={reportPost.isPending}
+                                onPress={() => submitReport(post.id)}
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                      {reportMessage?.postId === post.id && (
+                        <View
+                          style={[
+                            styles.reportFeedback,
+                            {
+                              backgroundColor:
+                                reportMessage.tone === "success" ? c.secondary : c.card,
+                              borderColor:
+                                reportMessage.tone === "success" ? c.border : c.destructive,
+                            },
+                          ]}
+                        >
+                          <Feather
+                            name={reportMessage.tone === "success" ? "check-circle" : "alert-circle"}
+                            size={16}
+                            color={
+                              reportMessage.tone === "success" ? c.foreground : c.destructive
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.reportFeedbackText,
+                              {
+                                color:
+                                  reportMessage.tone === "success"
+                                    ? c.foreground
+                                    : c.destructive,
+                              },
+                            ]}
+                          >
+                            {reportMessage.text}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   ))}
                 </View>
               )}
             </View>
+            {canReviewReports && (
+              <View style={[styles.moderationCard, { backgroundColor: c.card, borderColor: c.border }]}>
+                <View style={styles.sectionHeading}>
+                  <View style={styles.moderationHeading}>
+                    <View style={[styles.moderationIcon, { backgroundColor: c.secondary }]}>
+                      <Feather name="shield" size={17} color={c.foreground} />
+                    </View>
+                    <View>
+                      <Text style={[styles.sectionTitle, { color: c.foreground }]}>Report review</Text>
+                      <Text style={[styles.sectionSubtitle, { color: c.mutedForeground }]}>
+                        Open reports only · oldest 10 shown
+                      </Text>
+                    </View>
+                  </View>
+                  {moderationReports.isFetching && (
+                    <Text style={[styles.loadingLabel, { color: c.mutedForeground }]}>Loading…</Text>
+                  )}
+                </View>
+                {moderationMessage && (
+                  <Text style={[styles.moderationFeedback, { color: c.foreground }]}>
+                    {moderationMessage}
+                  </Text>
+                )}
+                {moderationReports.isError && !moderationForbidden ? (
+                  <Text style={[styles.moderationError, { color: c.destructive }]}>
+                    {errorMessage(
+                      moderationReports.error,
+                      "We couldn't load report review. Pull down to try again.",
+                    )}
+                  </Text>
+                ) : visibleModerationReports.length === 0 && !moderationReports.isLoading ? (
+                  <Text style={[styles.emptyBoard, { color: c.mutedForeground }]}>
+                    No open reports right now.
+                  </Text>
+                ) : (
+                  <View style={styles.moderationReports}>
+                    {visibleModerationReports.map((report) => (
+                      <View
+                        key={report.id}
+                        style={[styles.moderationReport, { borderTopColor: c.border }]}
+                      >
+                        <Text style={[styles.moderationReason, { color: c.foreground }]}>
+                          {report.reason.charAt(0).toUpperCase() + report.reason.slice(1)} report
+                        </Text>
+                        <Text style={[styles.moderationMeta, { color: c.mutedForeground }]}>
+                          Post by {report.authorDisplayName} · {formatDate(report.createdAt)}
+                        </Text>
+                        <Text style={[styles.moderationPost, { color: c.foreground }]}>
+                          {report.postContent}
+                        </Text>
+                        {!!report.details && (
+                          <Text style={[styles.moderationDetails, { color: c.mutedForeground }]}>
+                            Note: {report.details}
+                          </Text>
+                        )}
+                        <View style={styles.moderationActions}>
+                          <Pressable
+                            testID={`dismiss-park-report-${report.id}`}
+                            disabled={moderateReport.isPending}
+                            onPress={() => confirmModeration(report.id, "dismiss")}
+                            style={({ pressed }) => [
+                              styles.dismissButton,
+                              {
+                                borderColor: c.border,
+                                opacity: moderateReport.isPending ? 0.5 : pressed ? 0.72 : 1,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.dismissText, { color: c.foreground }]}>Dismiss</Text>
+                          </Pressable>
+                          <Pressable
+                            testID={`hide-park-post-${report.id}`}
+                            disabled={moderateReport.isPending}
+                            onPress={() => confirmModeration(report.id, "hide")}
+                            style={({ pressed }) => [
+                              styles.hideButton,
+                              {
+                                backgroundColor: c.destructive,
+                                opacity: moderateReport.isPending ? 0.5 : pressed ? 0.72 : 1,
+                              },
+                            ]}
+                          >
+                            <Feather name="eye-off" size={15} color={c.primaryForeground} />
+                            <Text style={[styles.hideText, { color: c.primaryForeground }]}>Hide post</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
             {isCreator ? (
               <View style={[styles.creatorNote, { backgroundColor: c.secondary }]}>
                 <Feather name="shield" size={16} color={c.foreground} />
@@ -374,4 +763,37 @@ const styles = StyleSheet.create({
   author: { fontSize: 14, fontWeight: "800" },
   postDate: { fontSize: 11, marginTop: 2 },
   postContent: { fontSize: 15, lineHeight: 21, paddingLeft: 43 },
+  reportTrigger: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 9, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 4 },
+  reportTriggerText: { fontSize: 12, fontWeight: "700" },
+  reportForm: { borderWidth: 1, borderRadius: 13, padding: 12, gap: 10, marginLeft: 43 },
+  reportTitle: { fontSize: 15, fontWeight: "800" },
+  reportCopy: { fontSize: 12, lineHeight: 17 },
+  reasonList: { gap: 7 },
+  reasonOption: { borderWidth: 1, borderRadius: 10, padding: 9, flexDirection: "row", gap: 8, alignItems: "flex-start" },
+  reasonCopy: { flex: 1, gap: 1 },
+  reasonLabel: { fontSize: 13, fontWeight: "800" },
+  reasonDescription: { fontSize: 11, lineHeight: 15 },
+  reportDetails: { minHeight: 64, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, textAlignVertical: "top", fontSize: 13 },
+  reportFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  reportActions: { flexDirection: "row", alignItems: "center", gap: 12 },
+  cancelText: { fontSize: 13, fontWeight: "800" },
+  reportFeedback: { marginLeft: 43, borderWidth: 1, borderRadius: 10, padding: 9, flexDirection: "row", alignItems: "flex-start", gap: 7 },
+  reportFeedbackText: { flex: 1, fontSize: 12, lineHeight: 17, fontWeight: "600" },
+  moderationCard: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 12 },
+  moderationHeading: { flexDirection: "row", gap: 9, alignItems: "center", flex: 1 },
+  moderationIcon: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  loadingLabel: { fontSize: 12, fontWeight: "700" },
+  moderationFeedback: { fontSize: 13, fontWeight: "700" },
+  moderationError: { fontSize: 13, lineHeight: 18, fontWeight: "600" },
+  moderationReports: { marginHorizontal: -16 },
+  moderationReport: { borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 13, gap: 6 },
+  moderationReason: { fontSize: 14, fontWeight: "800" },
+  moderationMeta: { fontSize: 11, lineHeight: 15 },
+  moderationPost: { fontSize: 14, lineHeight: 20 },
+  moderationDetails: { fontSize: 12, lineHeight: 17, fontStyle: "italic" },
+  moderationActions: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 9, marginTop: 3 },
+  dismissButton: { borderWidth: 1, borderRadius: 17, minHeight: 34, paddingHorizontal: 12, justifyContent: "center" },
+  dismissText: { fontSize: 12, fontWeight: "800" },
+  hideButton: { borderRadius: 17, minHeight: 34, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  hideText: { fontSize: 12, fontWeight: "800" },
 });

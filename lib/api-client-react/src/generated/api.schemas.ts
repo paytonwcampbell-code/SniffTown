@@ -406,6 +406,90 @@ export interface ParkPackPostInput {
   content: string;
 }
 
+export type ParkPackPostReportInputReason = typeof ParkPackPostReportInputReason[keyof typeof ParkPackPostReportInputReason];
+
+
+export const ParkPackPostReportInputReason = {
+  spam: 'spam',
+  harassment: 'harassment',
+  unsafe: 'unsafe',
+  other: 'other',
+} as const;
+
+export interface ParkPackPostReportInput {
+  reason: ParkPackPostReportInputReason;
+  /** @maxLength 500 */
+  details?: string;
+}
+
+export type ParkPackPostReportResultStatus = typeof ParkPackPostReportResultStatus[keyof typeof ParkPackPostReportResultStatus];
+
+
+export const ParkPackPostReportResultStatus = {
+  open: 'open',
+} as const;
+
+export interface ParkPackPostReportResult {
+  reportId: string;
+  status: ParkPackPostReportResultStatus;
+}
+
+export type ParkPackModerationReportReason = typeof ParkPackModerationReportReason[keyof typeof ParkPackModerationReportReason];
+
+
+export const ParkPackModerationReportReason = {
+  spam: 'spam',
+  harassment: 'harassment',
+  unsafe: 'unsafe',
+  other: 'other',
+} as const;
+
+export interface ParkPackModerationReport {
+  id: string;
+  postId: string;
+  postContent: string;
+  authorDisplayName: string;
+  reason: ParkPackModerationReportReason;
+  /** @nullable */
+  details: string | null;
+  createdAt: string;
+}
+
+export type ParkPackModerationActionInputAction = typeof ParkPackModerationActionInputAction[keyof typeof ParkPackModerationActionInputAction];
+
+
+export const ParkPackModerationActionInputAction = {
+  hide: 'hide',
+  dismiss: 'dismiss',
+} as const;
+
+export interface ParkPackModerationActionInput {
+  action: ParkPackModerationActionInputAction;
+}
+
+export type ParkPackModerationActionResultStatus = typeof ParkPackModerationActionResultStatus[keyof typeof ParkPackModerationActionResultStatus];
+
+
+export const ParkPackModerationActionResultStatus = {
+  actioned: 'actioned',
+  dismissed: 'dismissed',
+} as const;
+
+export type ParkPackModerationActionResultAction = typeof ParkPackModerationActionResultAction[keyof typeof ParkPackModerationActionResultAction];
+
+
+export const ParkPackModerationActionResultAction = {
+  hide: 'hide',
+  dismiss: 'dismiss',
+} as const;
+
+export interface ParkPackModerationActionResult {
+  reportId: string;
+  postId: string;
+  status: ParkPackModerationActionResultStatus;
+  action: ParkPackModerationActionResultAction;
+}
+
 export interface ParkPackDetail {
   id: string;
   name: string;

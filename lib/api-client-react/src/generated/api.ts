@@ -48,6 +48,8 @@ import type {
   ParkPackModerationActionInput,
   ParkPackModerationActionResult,
   ParkPackModerationReport,
+  ParkPackModeratorMember,
+  ParkPackModerators,
   ParkPackPost,
   ParkPackPostInput,
   ParkPackPostReportInput,
@@ -828,6 +830,232 @@ export const useUpdateParkPackMembership = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateParkPackMembershipMutationOptions(options));
+    }
+
+export const getGetParkPackModeratorsUrl = (parkId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/moderators`
+}
+
+/**
+ * Available only to a current pack creator. The member list contains no users who have left the pack.
+ * @summary List the current members of a park pack and their moderator status
+ */
+export const getParkPackModerators = async (parkId: string, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackModerators> => {
+
+  return customFetch<ParkPackModerators>(getGetParkPackModeratorsUrl(parkId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetParkPackModeratorsQueryKey = (parkId: string,) => {
+    return [
+    `/api/parks/${parkId}/moderators`
+    ] as const;
+    }
+
+
+export const getGetParkPackModeratorsQueryOptions = <TData = Awaited<ReturnType<typeof getParkPackModerators>>, TError = ErrorType<void>>(parkId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParkPackModerators>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetParkPackModeratorsQueryKey(parkId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getParkPackModerators>>> = ({ signal }) => getParkPackModerators(parkId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: parkId !== null && parkId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getParkPackModerators>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetParkPackModeratorsQueryResult = NonNullable<Awaited<ReturnType<typeof getParkPackModerators>>>
+export type GetParkPackModeratorsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List the current members of a park pack and their moderator status
+ */
+
+export function useGetParkPackModerators<TData = Awaited<ReturnType<typeof getParkPackModerators>>, TError = ErrorType<void>>(
+ parkId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParkPackModerators>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetParkPackModeratorsQueryOptions(parkId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAppointParkPackModeratorUrl = (parkId: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/moderators/${userId}`
+}
+
+/**
+ * Available only to a current pack creator. The target user must be a current member.
+ * @summary Appoint a current park-pack member as a moderator
+ */
+export const appointParkPackModerator = async (parkId: string,
+    userId: string, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackModeratorMember> => {
+
+  return customFetch<ParkPackModeratorMember>(getAppointParkPackModeratorUrl(parkId,userId),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getAppointParkPackModeratorMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof appointParkPackModerator>>, TError,{parkId: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof appointParkPackModerator>>, TError,{parkId: string;userId: string}, TContext> => {
+
+const mutationKey = ['appointParkPackModerator'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof appointParkPackModerator>>, {parkId: string;userId: string}> = (props) => {
+          const {parkId,userId} = props ?? {};
+
+          return  appointParkPackModerator(parkId,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AppointParkPackModeratorMutationResult = NonNullable<Awaited<ReturnType<typeof appointParkPackModerator>>>
+
+    export type AppointParkPackModeratorMutationError = ErrorType<void>
+
+    /**
+ * @summary Appoint a current park-pack member as a moderator
+ */
+export const useAppointParkPackModerator = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof appointParkPackModerator>>, TError,{parkId: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof appointParkPackModerator>>,
+        TError,
+        {parkId: string;userId: string},
+        TContext
+      > => {
+      return useMutation(getAppointParkPackModeratorMutationOptions(options));
+    }
+
+export const getRemoveParkPackModeratorUrl = (parkId: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/parks/${parkId}/moderators/${userId}`
+}
+
+/**
+ * Available only to a current pack creator. The target user's moderator access is revoked immediately.
+ * @summary Remove moderator status from a current park-pack member
+ */
+export const removeParkPackModerator = async (parkId: string,
+    userId: string, options?: Parameters<typeof customFetch>[1]): Promise<ParkPackModeratorMember> => {
+
+  return customFetch<ParkPackModeratorMember>(getRemoveParkPackModeratorUrl(parkId,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveParkPackModeratorMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeParkPackModerator>>, TError,{parkId: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeParkPackModerator>>, TError,{parkId: string;userId: string}, TContext> => {
+
+const mutationKey = ['removeParkPackModerator'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeParkPackModerator>>, {parkId: string;userId: string}> = (props) => {
+          const {parkId,userId} = props ?? {};
+
+          return  removeParkPackModerator(parkId,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveParkPackModeratorMutationResult = NonNullable<Awaited<ReturnType<typeof removeParkPackModerator>>>
+
+    export type RemoveParkPackModeratorMutationError = ErrorType<void>
+
+    /**
+ * @summary Remove moderator status from a current park-pack member
+ */
+export const useRemoveParkPackModerator = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeParkPackModerator>>, TError,{parkId: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeParkPackModerator>>,
+        TError,
+        {parkId: string;userId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveParkPackModeratorMutationOptions(options));
     }
 
 export const getGetParkPackDetailUrl = (parkId: string,) => {

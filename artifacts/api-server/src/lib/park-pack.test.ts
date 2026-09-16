@@ -3,10 +3,12 @@ import test from "node:test";
 import {
   canViewPrivateParkPack,
   isPackMembershipUniqueConflict,
+  moderatorManagementProviderError,
   moderationProviderError,
   normalizeParkPackPostBody,
   serializeParkPackModerationReport,
   serializeParkPackMember,
+  serializeParkPackModerator,
   serializeParkPackPost,
 } from "./park-pack.ts";
 
@@ -128,6 +130,50 @@ test("does not expose reporter identity in moderation report serialization", () 
       reason: "spam",
       details: "Seen several times.",
       createdAt: "2026-09-16T10:00:00.000Z",
+    },
+  );
+});
+
+test("serializes park-pack moderator members without contact fields", () => {
+  assert.deepEqual(
+    serializeParkPackModerator({
+      user_id: "member-1",
+      display_name: "Alex A.",
+      is_moderator: true,
+      email: "must-not-leak@example.test",
+    }),
+    {
+      userId: "member-1",
+      displayName: "Alex A.",
+      isModerator: true,
+    },
+  );
+});
+
+test("maps moderator management authorization errors explicitly", () => {
+  assert.deepEqual(
+    moderatorManagementProviderError(
+      "Only a current pack creator can manage moderators.",
+    ),
+    {
+      status: 403,
+      message: "Only this pack's current creator can manage moderators.",
+    },
+  );
+  assert.deepEqual(
+    moderatorManagementProviderError(
+      "The selected user is not a current park-pack member.",
+    ),
+    {
+      status: 404,
+      message: "That user is not a current member of this park pack.",
+    },
+  );
+  assert.deepEqual(
+    moderatorManagementProviderError("Pack creators are always moderators."),
+    {
+      status: 409,
+      message: "Pack creators are always moderators.",
     },
   );
 });

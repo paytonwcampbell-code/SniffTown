@@ -109,6 +109,45 @@ export function serializeParkPackModerationReport(row: Record<string, unknown>) 
   };
 }
 
+export function serializeParkPackModerator(row: Record<string, unknown>) {
+  return {
+    userId: String(row.user_id),
+    displayName:
+      typeof row.display_name === "string" && row.display_name.trim()
+        ? row.display_name
+        : "Pack Member",
+    isModerator: Boolean(row.is_moderator),
+  };
+}
+
+export function moderatorManagementProviderError(
+  providerMessage: string,
+) {
+  const message = providerMessage.toLowerCase();
+  if (message.includes("only a current pack creator")) {
+    return {
+      status: 403,
+      message: "Only this pack's current creator can manage moderators.",
+    };
+  }
+  if (message.includes("not a current park-pack member")) {
+    return {
+      status: 404,
+      message: "That user is not a current member of this park pack.",
+    };
+  }
+  if (message.includes("always moderators")) {
+    return {
+      status: 409,
+      message: "Pack creators are always moderators.",
+    };
+  }
+  return {
+    status: 502,
+    message: "Unable to update park-pack moderators right now.",
+  };
+}
+
 export function serializeParkPackPost(
   row: Record<string, unknown>,
   memberDogs: ParkPackDogRow[],

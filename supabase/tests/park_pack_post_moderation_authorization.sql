@@ -71,6 +71,7 @@ begin
 
   insert into public.pack_members (pack_id, user_id)
   values
+    ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001'),
     ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002'),
     ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000004'),
     ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000006'),
@@ -332,6 +333,88 @@ begin
 end
 $$;
 
+-- The creator-only member picker and its idempotent assignment operations
+-- expose only current pack members.
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
+do $$
+declare
+  member_count integer;
+  appointed boolean;
+  removed boolean;
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.pack_moderators'::regclass
+      and conname = 'pack_moderators_current_member_fkey'
+      and contype = 'f'
+  ) then
+    raise exception 'current-member composite foreign key is missing';
+  end if;
+
+  select count(*) into member_count
+  from public.get_pack_moderator_members(
+    '20000000-0000-4000-8000-000000000001'
+  );
+  if member_count <> 5 then
+    raise exception 'creator member picker returned % members, expected 5', member_count;
+  end if;
+
+  select is_moderator into appointed
+  from public.appoint_pack_moderator(
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000002'
+  );
+  if appointed is not true then
+    raise exception 'creator could not appoint a current member';
+  end if;
+
+  select is_moderator into removed
+  from public.remove_pack_moderator(
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000002'
+  );
+  if removed is not false then
+    raise exception 'creator could not remove a member moderator';
+  end if;
+end
+$$;
+
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000002', true);
+do $$
+begin
+  if public.is_current_pack_member(
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001'
+  ) then
+    raise exception 'authenticated member probed another user membership';
+  end if;
+  if not public.is_current_pack_member(
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000002'
+  ) then
+    raise exception 'authenticated member could not check own membership';
+  end if;
+
+  begin
+    perform public.is_pack_moderator(
+      '20000000-0000-4000-8000-000000000001',
+      '10000000-0000-4000-8000-000000000004'
+    );
+    raise exception 'authenticated member probed another user moderator status';
+  exception when sqlstate '42501' then
+    null;
+  end;
+
+  perform public.get_pack_moderator_members(
+    '20000000-0000-4000-8000-000000000001'
+  );
+  raise exception 'noncreator unexpectedly listed moderator members';
+exception when sqlstate '42501' then
+  null;
+end
+$$;
+
 -- Hiding through the RPC does not give the post author a way to restore it,
 -- even if an existing UPDATE policy permits ordinary edits to their posts.
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000005', true);
@@ -352,8 +435,28 @@ end
 $$;
 
 -- Designation alone is insufficient: removing a moderator from the pack
--- immediately removes moderation access, while a creator remains the
--- intentional membership-row exception.
+-- immediately removes moderation access. Creators are current members and
+-- cannot use the leave flow to bypass this invariant.
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000004', true);
+-- A creator cannot directly appoint a nonmember, even though the creator is
+-- allowed to manage the moderator table. The membership guard is enforced
+-- both by the policy and by the trigger.
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
+do $$
+begin
+  insert into public.pack_moderators (pack_id, user_id)
+  values (
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000003'
+  );
+  raise exception 'creator unexpectedly appointed a nonmember';
+exception
+  when sqlstate '42501' then null;
+  when sqlstate '23514' then null;
+  when sqlstate '23503' then null;
+end
+$$;
+
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000004', true);
 delete from public.pack_members
 where pack_id = '20000000-0000-4000-8000-000000000001'
@@ -378,6 +481,26 @@ begin
   raise exception 'removed moderator unexpectedly moderated a report';
 exception when sqlstate '42501' then
   null;
+end
+$$;
+
+-- Rejoining does not restore a stale role: leaving removed the assignment in
+-- the same transaction, and the membership guard blocks stale reintroduction.
+insert into public.pack_members (pack_id, user_id)
+values (
+  '20000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000004'
+);
+do $$
+begin
+  if exists (
+    select 1
+    from public.pack_moderators
+    where pack_id = '20000000-0000-4000-8000-000000000001'
+      and user_id = '10000000-0000-4000-8000-000000000004'
+  ) then
+    raise exception 'rejoining member unexpectedly retained moderator assignment';
+  end if;
 end
 $$;
 

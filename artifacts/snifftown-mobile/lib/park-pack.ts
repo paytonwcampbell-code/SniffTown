@@ -2,6 +2,7 @@ import type { ParkPackDetail } from "@workspace/api-client-react";
 
 export const PARK_PACK_DETAIL_QUERY_SCOPE = "park-pack-detail";
 export const PARK_PACK_MODERATION_QUERY_SCOPE = "park-pack-moderation";
+export const PARK_PACK_MODERATORS_QUERY_SCOPE = "park-pack-moderators";
 
 export function getParkListViewerQueryKey(viewerId: string | null) {
   return ["/api/parks", PARK_PACK_DETAIL_QUERY_SCOPE, viewerId ?? "anonymous"] as const;
@@ -29,6 +30,17 @@ export function getParkPackModerationReportsViewerQueryKey(
   ] as const;
 }
 
+export function getParkPackModeratorsViewerQueryKey(
+  parkId: string,
+  viewerId: string | null,
+) {
+  return [
+    `/api/parks/${parkId}/moderators`,
+    PARK_PACK_MODERATORS_QUERY_SCOPE,
+    viewerId ?? "anonymous",
+  ] as const;
+}
+
 export function isParkPackDetailViewerQueryKey(key: readonly unknown[]) {
   if (
     typeof key[0] !== "string" ||
@@ -44,7 +56,8 @@ export function isParkPackDetailViewerQueryKey(key: readonly unknown[]) {
     key.length === 1 ||
     (key.length === 3 &&
       (key[1] === PARK_PACK_DETAIL_QUERY_SCOPE ||
-        key[1] === PARK_PACK_MODERATION_QUERY_SCOPE) &&
+        key[1] === PARK_PACK_MODERATION_QUERY_SCOPE ||
+        key[1] === PARK_PACK_MODERATORS_QUERY_SCOPE) &&
       typeof key[2] === "string")
   );
 }

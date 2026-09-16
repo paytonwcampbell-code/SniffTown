@@ -299,6 +299,56 @@ export const UpdateParkPackMembershipResponse = zod.object({
 
 
 /**
+ * Available only to a current pack creator. The member list contains no users who have left the pack.
+ * @summary List the current members of a park pack and their moderator status
+ */
+export const GetParkPackModeratorsParams = zod.object({
+  "parkId": zod.coerce.string()
+})
+
+export const GetParkPackModeratorsResponse = zod.object({
+  "members": zod.array(zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "isModerator": zod.boolean()
+})),
+  "creatorId": zod.string()
+})
+
+
+/**
+ * Available only to a current pack creator. The target user must be a current member.
+ * @summary Appoint a current park-pack member as a moderator
+ */
+export const AppointParkPackModeratorParams = zod.object({
+  "parkId": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+export const AppointParkPackModeratorResponse = zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "isModerator": zod.boolean()
+})
+
+
+/**
+ * Available only to a current pack creator. The target user's moderator access is revoked immediately.
+ * @summary Remove moderator status from a current park-pack member
+ */
+export const RemoveParkPackModeratorParams = zod.object({
+  "parkId": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+export const RemoveParkPackModeratorResponse = zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "isModerator": zod.boolean()
+})
+
+
+/**
  * @summary Get public park-pack metadata and member-only community content
  */
 export const GetParkPackDetailParams = zod.object({

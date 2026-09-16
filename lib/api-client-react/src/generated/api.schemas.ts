@@ -384,6 +384,17 @@ export interface ParkPackMember {
   dogPhotoUrl: string | null;
 }
 
+export interface ParkPackModeratorMember {
+  userId: string;
+  displayName: string;
+  isModerator: boolean;
+}
+
+export interface ParkPackModerators {
+  members: ParkPackModeratorMember[];
+  creatorId: string;
+}
+
 export interface ParkPackPost {
   id: string;
   content: string;

@@ -28,6 +28,7 @@ const viewers = new Map([
   ["nonmoderator-token", { id: "nonmoderator-id", email: "neighbor@example.test" }],
   ["creator-token", { id: "creator-id", email: "creator@example.test" }],
   ["designated-admin-token", { id: "designated-admin-id", email: "admin@example.test" }],
+  ["moderator-member-token", { id: "moderator-member-id", email: "moderator@example.test" }],
 ]);
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -130,6 +131,58 @@ globalThis.fetch = async (input, init) => {
     ]);
   }
 
+  if (url.pathname === "/rest/v1/rpc/get_pack_moderator_members") {
+    if (token !== "creator-token") {
+      return providerError("Only a current pack creator can manage moderators.");
+    }
+    return jsonResponse([
+      {
+        creator_id: "creator-id",
+        user_id: "creator-id",
+        display_name: "Creator C.",
+        is_moderator: true,
+      },
+      {
+        creator_id: "creator-id",
+        user_id: "moderator-member-id",
+        display_name: "Alex A.",
+        is_moderator: true,
+      },
+      {
+        creator_id: "creator-id",
+        user_id: "member-id",
+        display_name: "Member M.",
+        is_moderator: false,
+      },
+    ]);
+  }
+
+  if (url.pathname === "/rest/v1/rpc/appoint_pack_moderator") {
+    if (token !== "creator-token") {
+      return providerError("Only a current pack creator can manage moderators.");
+    }
+    return jsonResponse([
+      {
+        user_id: String(call.body?.target_user_id),
+        display_name: "Member M.",
+        is_moderator: true,
+      },
+    ]);
+  }
+
+  if (url.pathname === "/rest/v1/rpc/remove_pack_moderator") {
+    if (token !== "creator-token") {
+      return providerError("Only a current pack creator can manage moderators.");
+    }
+    return jsonResponse([
+      {
+        user_id: String(call.body?.target_user_id),
+        display_name: "Member M.",
+        is_moderator: false,
+      },
+    ]);
+  }
+
   throw new Error(`Unexpected Supabase path: ${url.pathname}`);
 };
 
@@ -144,7 +197,7 @@ assert.ok(address && typeof address !== "string");
 const baseUrl = `http://127.0.0.1:${address.port}`;
 
 async function request(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
   token?: string,
   body?: Record<string, unknown>,
@@ -178,7 +231,7 @@ function assertViewerRpc(
 test("anonymous viewers cannot report, enumerate reports, or moderate", async () => {
   resetCalls();
 
-  const [report, list, moderate] = await Promise.all([
+  const [report, list, moderate, listModerators] = await Promise.all([
     request("POST", `/parks/${PACK_ID}/posts/${POST_ID}/reports`, undefined, {
       reason: "spam",
     }),
@@ -189,11 +242,13 @@ test("anonymous viewers cannot report, enumerate reports, or moderate", async ()
       undefined,
       { action: "hide" },
     ),
+    request("GET", `/parks/${PACK_ID}/moderators`),
   ]);
 
   assert.equal(report.status, 401);
   assert.equal(list.status, 401);
   assert.equal(moderate.status, 401);
+  assert.equal(listModerators.status, 401);
   assert.equal(calls.length, 0);
 });
 
@@ -402,6 +457,79 @@ test("report spam rate-limit errors remain explicit and safe", async () => {
     target_post_id: POST_ID,
     report_reason: "spam",
     report_details: null,
+  });
+});
+
+test("only a current creator can list the member picker", async () => {
+  resetCalls();
+  const response = await request(
+    "GET",
+    `/parks/${PACK_ID}/moderators`,
+    "creator-token",
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, {
+    creatorId: "creator-id",
+    members: [
+      { userId: "creator-id", displayName: "Creator C.", isModerator: true },
+      { userId: "moderator-member-id", displayName: "Alex A.", isModerator: true },
+      { userId: "member-id", displayName: "Member M.", isModerator: false },
+    ],
+  });
+  assertViewerRpc("get_pack_moderator_members", "creator-token", {
+    target_pack_id: PACK_ID,
+  });
+
+  resetCalls();
+  const denied = await request(
+    "GET",
+    `/parks/${PACK_ID}/moderators`,
+    "moderator-member-token",
+  );
+  assert.equal(denied.status, 403);
+  assert.equal(
+    denied.body.error,
+    "Only this pack's current creator can manage moderators.",
+  );
+  assertViewerRpc("get_pack_moderator_members", "moderator-member-token", {
+    target_pack_id: PACK_ID,
+  });
+});
+
+test("creator can appoint and remove a current member", async () => {
+  resetCalls();
+  const appointed = await request(
+    "PUT",
+    `/parks/${PACK_ID}/moderators/member-id`,
+    "creator-token",
+  );
+  assert.equal(appointed.status, 200);
+  assert.deepEqual(appointed.body, {
+    userId: "member-id",
+    displayName: "Member M.",
+    isModerator: true,
+  });
+  assertViewerRpc("appoint_pack_moderator", "creator-token", {
+    target_pack_id: PACK_ID,
+    target_user_id: "member-id",
+  });
+
+  resetCalls();
+  const removed = await request(
+    "DELETE",
+    `/parks/${PACK_ID}/moderators/member-id`,
+    "creator-token",
+  );
+  assert.equal(removed.status, 200);
+  assert.deepEqual(removed.body, {
+    userId: "member-id",
+    displayName: "Member M.",
+    isModerator: false,
+  });
+  assertViewerRpc("remove_pack_moderator", "creator-token", {
+    target_pack_id: PACK_ID,
+    target_user_id: "member-id",
   });
 });
 

@@ -62,6 +62,8 @@ export * from './parkPackModerationActionResultAction';
 export * from './parkPackModerationActionResultStatus';
 export * from './parkPackModerationReport';
 export * from './parkPackModerationReportReason';
+export * from './parkPackModeratorMember';
+export * from './parkPackModerators';
 export * from './parkPackPost';
 export * from './parkPackPostInput';
 export * from './parkPackPostReportInput';

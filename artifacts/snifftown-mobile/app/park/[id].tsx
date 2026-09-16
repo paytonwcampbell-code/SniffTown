@@ -3,11 +3,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   type ParkPackPostReportInput,
   type ParkPackDetail,
+  type ParkPackModerators,
+  useAppointParkPackModerator,
   useCreateParkPackPost,
   useDeleteParkPackPost,
   useGetParkPackDetail,
+  useGetParkPackModerators,
   useListParkPackModerationReports,
   useModerateParkPackPostReport,
+  useRemoveParkPackModerator,
   useReportParkPackPost,
   useUpdateParkPackMembership,
 } from "@workspace/api-client-react";
@@ -34,6 +38,7 @@ import {
   canRenderPrivateParkPackContent,
   getParkListViewerQueryKey,
   getParkPackDetailViewerQueryKey,
+  getParkPackModeratorsViewerQueryKey,
   getParkPackModerationReportsViewerQueryKey,
 } from "@/lib/park-pack";
 
@@ -121,6 +126,12 @@ export default function ParkPackDetailScreen() {
     query: { enabled: ready, queryKey: detailQueryKey },
   });
   const canAccessPrivateContent = canRenderPrivateParkPackContent(viewerId, detail.data);
+  const moderators = useGetParkPackModerators(parkId, {
+    query: {
+      enabled: ready && Boolean(parkId) && canAccessPrivateContent && Boolean(detail.data?.isCreator),
+      queryKey: getParkPackModeratorsViewerQueryKey(parkId, viewerId),
+    },
+  });
   const moderationReports = useListParkPackModerationReports(parkId, {
     query: {
       enabled: ready && Boolean(parkId) && canAccessPrivateContent,
@@ -152,6 +163,13 @@ export default function ParkPackDetailScreen() {
   });
   const reportPost = useReportParkPackPost();
   const moderateReport = useModerateParkPackPostReport();
+  const appointModerator = useAppointParkPackModerator();
+  const removeModerator = useRemoveParkPackModerator();
+  const [moderatorActionUserId, setModeratorActionUserId] = useState<string | null>(null);
+  const [moderatorMessage, setModeratorMessage] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
 
   if (!parkId || detail.isLoading) {
     return (
@@ -287,6 +305,89 @@ export default function ParkPackDetailScreen() {
                   setModerationMessage(
                     errorMessage(error, "We couldn't save that moderation action. Please try again."),
                   );
+                },
+              },
+            );
+          },
+        },
+      ],
+    );
+  };
+  const confirmModeratorChange = (member: {
+    userId: string;
+    displayName: string;
+    isModerator: boolean;
+  }) => {
+    if (
+      !isCreator ||
+      member.userId === moderators.data?.creatorId ||
+      appointModerator.isPending ||
+      removeModerator.isPending
+    ) {
+      return;
+    }
+    const appoint = !member.isModerator;
+    Alert.alert(
+      appoint ? "Appoint moderator?" : "Remove moderator?",
+      appoint
+        ? `${member.displayName} will be able to review reports and hide posts in this pack.`
+        : `${member.displayName} will no longer be able to review reports or hide posts in this pack.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: appoint ? "Appoint" : "Remove",
+          style: appoint ? "default" : "destructive",
+          onPress: () => {
+            setModeratorActionUserId(member.userId);
+            setModeratorMessage(null);
+            const mutation = appoint ? appointModerator : removeModerator;
+            mutation.mutate(
+              { parkId, userId: member.userId },
+              {
+                onSuccess: () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  setModeratorActionUserId(null);
+                  setModeratorMessage({
+                    tone: "success",
+                    text: appoint
+                      ? `${member.displayName} is now a pack moderator.`
+                      : `${member.displayName} is no longer a pack moderator.`,
+                  });
+                  const moderatorsQueryKey = getParkPackModeratorsViewerQueryKey(parkId, viewerId);
+                  queryClient.setQueryData<ParkPackModerators>(
+                    moderatorsQueryKey,
+                    (current) =>
+                      current
+                        ? {
+                            ...current,
+                            members: current.members.map((currentMember) =>
+                              currentMember.userId === member.userId
+                                ? { ...currentMember, isModerator: appoint }
+                                : currentMember,
+                            ),
+                          }
+                        : current,
+                  );
+                  queryClient.invalidateQueries({
+                    queryKey: moderatorsQueryKey,
+                  });
+                  // A moderator's report access is private viewer state. Refresh both
+                  // caches after every role change so a changed permission cannot linger.
+                  queryClient.invalidateQueries({
+                    queryKey: getParkPackModerationReportsViewerQueryKey(parkId, viewerId),
+                  });
+                },
+                onError: (error: unknown) => {
+                  setModeratorActionUserId(null);
+                  setModeratorMessage({
+                    tone: "error",
+                    text: errorMessage(
+                      error,
+                      appoint
+                        ? "We couldn't appoint that moderator. Please try again."
+                        : "We couldn't remove that moderator. Please try again.",
+                    ),
+                  });
                 },
               },
             );
@@ -698,6 +799,167 @@ export default function ParkPackDetailScreen() {
                 )}
               </View>
             )}
+            {isCreator && (
+              <View style={[styles.moderatorCard, { backgroundColor: c.card, borderColor: c.border }]}>
+                <View style={styles.sectionHeading}>
+                  <View style={styles.moderationHeading}>
+                    <View style={[styles.moderationIcon, { backgroundColor: c.secondary }]}>
+                      <Feather name="users" size={17} color={c.foreground} />
+                    </View>
+                    <View style={styles.moderatorHeadingCopy}>
+                      <Text style={[styles.sectionTitle, { color: c.foreground }]}>Pack moderators</Text>
+                      <Text style={[styles.sectionSubtitle, { color: c.mutedForeground }]}>
+                        Choose members who can review reports.
+                      </Text>
+                    </View>
+                  </View>
+                  {moderators.isFetching && (
+                    <Text style={[styles.loadingLabel, { color: c.mutedForeground }]}>Loading…</Text>
+                  )}
+                </View>
+                {moderatorMessage && (
+                  <View
+                    style={[
+                      styles.moderatorFeedback,
+                      {
+                        backgroundColor: moderatorMessage.tone === "success" ? c.secondary : c.card,
+                        borderColor:
+                          moderatorMessage.tone === "success" ? c.border : c.destructive,
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name={moderatorMessage.tone === "success" ? "check-circle" : "alert-circle"}
+                      size={16}
+                      color={
+                        moderatorMessage.tone === "success" ? c.foreground : c.destructive
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.moderatorFeedbackText,
+                        {
+                          color:
+                            moderatorMessage.tone === "success"
+                              ? c.foreground
+                              : c.destructive,
+                        },
+                      ]}
+                    >
+                      {moderatorMessage.text}
+                    </Text>
+                  </View>
+                )}
+                {moderators.isError ? (
+                  <View style={styles.moderatorError}>
+                    <Text style={[styles.moderationError, { color: c.destructive }]}>
+                      {errorMessage(
+                        moderators.error,
+                        "We couldn't load pack members. Please try again.",
+                      )}
+                    </Text>
+                    <Pressable
+                      testID="retry-park-moderators"
+                      onPress={() => moderators.refetch()}
+                      disabled={moderators.isFetching}
+                      style={({ pressed }) => ({ opacity: pressed || moderators.isFetching ? 0.6 : 1 })}
+                    >
+                      <Text style={[styles.retryText, { color: c.primary }]}>Try again</Text>
+                    </Pressable>
+                  </View>
+                ) : moderators.isLoading ? (
+                  <View style={styles.moderatorLoading}>
+                    <Feather name="loader" size={16} color={c.mutedForeground} />
+                    <Text style={[styles.moderationMeta, { color: c.mutedForeground }]}>
+                      Loading pack members…
+                    </Text>
+                  </View>
+                ) : !moderators.data?.members?.length ? (
+                  <Text style={[styles.emptyBoard, { color: c.mutedForeground }]}>
+                    No other members can be appointed yet.
+                  </Text>
+                ) : (
+                  <View style={styles.moderatorList}>
+                    {moderators.data.members.map((member) => {
+                      const isPackCreator = member.userId === moderators.data?.creatorId;
+                      const isChanging = moderatorActionUserId === member.userId;
+                      const canChange = !isPackCreator && !appointModerator.isPending && !removeModerator.isPending;
+                      return (
+                        <View
+                          key={member.userId}
+                          style={[styles.moderatorRow, { borderTopColor: c.border }]}
+                        >
+                          <View style={[styles.moderatorAvatar, { backgroundColor: c.accent }]}>
+                            <Feather
+                              name={isPackCreator ? "star" : member.isModerator ? "shield" : "user"}
+                              size={15}
+                              color={c.accentForeground}
+                            />
+                          </View>
+                          <View style={styles.moderatorCopy}>
+                            <Text style={[styles.moderatorName, { color: c.foreground }]}>
+                              {member.displayName}
+                            </Text>
+                            <Text style={[styles.moderatorStatus, { color: c.mutedForeground }]}>
+                              {isPackCreator
+                                ? "Pack creator"
+                                : member.isModerator
+                                  ? "Moderator"
+                                  : "Member"}
+                            </Text>
+                          </View>
+                          {isPackCreator ? (
+                            <Feather name="check" size={17} color={c.mutedForeground} />
+                          ) : (
+                            <Pressable
+                              testID={`park-moderator-${member.userId}`}
+                              accessibilityRole="button"
+                              accessibilityLabel={
+                                member.isModerator
+                                  ? `Remove ${member.displayName} as moderator`
+                                  : `Appoint ${member.displayName} as moderator`
+                              }
+                              accessibilityState={{ disabled: !canChange, busy: isChanging }}
+                              disabled={!canChange}
+                              onPress={() => confirmModeratorChange(member)}
+                              style={({ pressed }) => [
+                                styles.moderatorAction,
+                                {
+                                  borderColor: member.isModerator ? c.destructive : c.primary,
+                                  opacity: !canChange ? 0.45 : pressed ? 0.7 : 1,
+                                },
+                              ]}
+                            >
+                              {isChanging ? (
+                                <Feather name="loader" size={14} color={c.primary} />
+                              ) : (
+                                <Feather
+                                  name={member.isModerator ? "minus" : "plus"}
+                                  size={14}
+                                  color={member.isModerator ? c.destructive : c.primary}
+                                />
+                              )}
+                              <Text
+                                style={[
+                                  styles.moderatorActionText,
+                                  { color: member.isModerator ? c.destructive : c.primary },
+                                ]}
+                              >
+                                {isChanging
+                                  ? "Saving…"
+                                  : member.isModerator
+                                    ? "Remove"
+                                    : "Appoint"}
+                              </Text>
+                            </Pressable>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            )}
             {isCreator ? (
               <View style={[styles.creatorNote, { backgroundColor: c.secondary }]}>
                 <Feather name="shield" size={16} color={c.foreground} />
@@ -780,7 +1042,9 @@ const styles = StyleSheet.create({
   reportFeedback: { marginLeft: 43, borderWidth: 1, borderRadius: 10, padding: 9, flexDirection: "row", alignItems: "flex-start", gap: 7 },
   reportFeedbackText: { flex: 1, fontSize: 12, lineHeight: 17, fontWeight: "600" },
   moderationCard: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 12 },
+  moderatorCard: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 12 },
   moderationHeading: { flexDirection: "row", gap: 9, alignItems: "center", flex: 1 },
+  moderatorHeadingCopy: { flex: 1 },
   moderationIcon: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   loadingLabel: { fontSize: 12, fontWeight: "700" },
   moderationFeedback: { fontSize: 13, fontWeight: "700" },
@@ -796,4 +1060,17 @@ const styles = StyleSheet.create({
   dismissText: { fontSize: 12, fontWeight: "800" },
   hideButton: { borderRadius: 17, minHeight: 34, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   hideText: { fontSize: 12, fontWeight: "800" },
+  moderatorFeedback: { borderWidth: 1, borderRadius: 10, padding: 9, flexDirection: "row", alignItems: "flex-start", gap: 7 },
+  moderatorFeedbackText: { flex: 1, fontSize: 12, lineHeight: 17, fontWeight: "600" },
+  moderatorError: { gap: 7 },
+  retryText: { fontSize: 13, fontWeight: "800" },
+  moderatorLoading: { flexDirection: "row", alignItems: "center", gap: 8 },
+  moderatorList: { marginHorizontal: -16 },
+  moderatorRow: { minHeight: 62, borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 9 },
+  moderatorAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  moderatorCopy: { flex: 1, gap: 2 },
+  moderatorName: { fontSize: 14, fontWeight: "800" },
+  moderatorStatus: { fontSize: 11 },
+  moderatorAction: { minHeight: 32, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
+  moderatorActionText: { fontSize: 11, fontWeight: "800" },
 });

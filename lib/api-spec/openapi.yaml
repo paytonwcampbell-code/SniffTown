@@ -234,6 +234,90 @@ paths:
           description: Local park pack not found
         "409":
           description: Pack creators must remain members
+  /parks/{parkId}/moderators:
+    get:
+      operationId: getParkPackModerators
+      tags: [parks]
+      summary: List the current members of a park pack and their moderator status
+      description: Available only to a current pack creator. The member list contains no users who have left the pack.
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current park-pack members and moderator status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkPackModerators"
+        "401":
+          description: Authentication required
+        "403":
+          description: Current pack creator access required
+  /parks/{parkId}/moderators/{userId}:
+    put:
+      operationId: appointParkPackModerator
+      tags: [parks]
+      summary: Appoint a current park-pack member as a moderator
+      description: Available only to a current pack creator. The target user must be a current member.
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated moderator assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkPackModeratorMember"
+        "401":
+          description: Authentication required
+        "403":
+          description: Current pack creator access required
+        "404":
+          description: Target user is not a current pack member
+    delete:
+      operationId: removeParkPackModerator
+      tags: [parks]
+      summary: Remove moderator status from a current park-pack member
+      description: Available only to a current pack creator. The target user's moderator access is revoked immediately.
+      parameters:
+        - name: parkId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated moderator assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkPackModeratorMember"
+        "401":
+          description: Authentication required
+        "403":
+          description: Current pack creator access required
+        "404":
+          description: Target user is not a current pack member
+        "409":
+          description: Pack creators are always moderators
   /parks/{parkId}:
     get:
       operationId: getParkPackDetail
@@ -1051,6 +1135,26 @@ components:
         dogPhotoUrl:
           type: ["string", "null"]
       required: [dogId, dogName, dogPhotoUrl]
+    ParkPackModeratorMember:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        isModerator:
+          type: boolean
+      required: [userId, displayName, isModerator]
+    ParkPackModerators:
+      type: object
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParkPackModeratorMember"
+        creatorId:
+          type: string
+      required: [members, creatorId]
     ParkPackPost:
       type: object
       properties:

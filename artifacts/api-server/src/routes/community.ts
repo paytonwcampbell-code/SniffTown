@@ -28,6 +28,12 @@ import {
   ListIncomingPackRequestsResponse,
   ListPacksResponse,
   ListParksResponse,
+  GetParkPackModeratorsParams,
+  GetParkPackModeratorsResponse,
+  AppointParkPackModeratorParams,
+  AppointParkPackModeratorResponse,
+  RemoveParkPackModeratorParams,
+  RemoveParkPackModeratorResponse,
   UpdateParkPackMembershipBody,
   UpdateParkPackMembershipParams,
   UpdateParkPackMembershipResponse,
@@ -55,10 +61,12 @@ import { rankDogs, toDogWritePayload } from "../lib/dog-profile";
 import {
   canViewPrivateParkPack,
   isPackMembershipUniqueConflict,
+  moderatorManagementProviderError,
   moderationProviderError,
   normalizeParkPackPostBody,
   serializeParkPackModerationReport,
   serializeParkPackMember,
+  serializeParkPackModerator,
   serializeParkPackPost,
 } from "../lib/park-pack";
 
@@ -1842,6 +1850,142 @@ router.post("/parks/:parkId/membership", async (req, res) => {
   } catch (error) {
     req.log.error({ err: error }, "Unable to update local park pack membership");
     res.status(502).json({ error: "Unable to update this park pack right now." });
+  }
+});
+
+router.get("/parks/:parkId/moderators", async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  const params = GetParkPackModeratorsParams.safeParse(req.params);
+  const user = await currentUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to manage park-pack moderators." });
+    return;
+  }
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid park pack." });
+    return;
+  }
+
+  try {
+    const response = await supabaseUserRequest(
+      "/rest/v1/rpc/get_pack_moderator_members",
+      {
+        method: "POST",
+        headers: {
+          ...bearer(req),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ target_pack_id: params.data.parkId }),
+      },
+    );
+    if (!response.ok) {
+      const mapped = moderatorManagementProviderError(await readProviderError(response));
+      res.status(mapped.status).json({ error: mapped.message });
+      return;
+    }
+    const rows = (await response.json()) as RecordValue[];
+    const creatorId = rows[0]?.creator_id;
+    if (typeof creatorId !== "string" || !creatorId) {
+      res.status(502).json({ error: "The park-pack creator could not be determined." });
+      return;
+    }
+    res.json(
+      GetParkPackModeratorsResponse.parse({
+        creatorId,
+        members: rows.map(serializeParkPackModerator),
+      }),
+    );
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to load park pack moderators");
+    res.status(502).json({ error: "Unable to load park-pack moderators right now." });
+  }
+});
+
+router.put("/parks/:parkId/moderators/:userId", async (req, res) => {
+  const params = AppointParkPackModeratorParams.safeParse(req.params);
+  const user = await currentUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to appoint park-pack moderators." });
+    return;
+  }
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid park-pack moderator." });
+    return;
+  }
+
+  try {
+    const response = await supabaseUserRequest(
+      "/rest/v1/rpc/appoint_pack_moderator",
+      {
+        method: "POST",
+        headers: {
+          ...bearer(req),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          target_pack_id: params.data.parkId,
+          target_user_id: params.data.userId,
+        }),
+      },
+    );
+    if (!response.ok) {
+      const mapped = moderatorManagementProviderError(await readProviderError(response));
+      res.status(mapped.status).json({ error: mapped.message });
+      return;
+    }
+    const row = ((await response.json()) as RecordValue[])[0];
+    if (!row) {
+      res.status(502).json({ error: "The moderator assignment could not be saved." });
+      return;
+    }
+    res.json(AppointParkPackModeratorResponse.parse(serializeParkPackModerator(row)));
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to appoint park pack moderator");
+    res.status(502).json({ error: "Unable to appoint this park-pack moderator right now." });
+  }
+});
+
+router.delete("/parks/:parkId/moderators/:userId", async (req, res) => {
+  const params = RemoveParkPackModeratorParams.safeParse(req.params);
+  const user = await currentUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to remove park-pack moderators." });
+    return;
+  }
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid park-pack moderator." });
+    return;
+  }
+
+  try {
+    const response = await supabaseUserRequest(
+      "/rest/v1/rpc/remove_pack_moderator",
+      {
+        method: "POST",
+        headers: {
+          ...bearer(req),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          target_pack_id: params.data.parkId,
+          target_user_id: params.data.userId,
+        }),
+      },
+    );
+    if (!response.ok) {
+      const mapped = moderatorManagementProviderError(await readProviderError(response));
+      res.status(mapped.status).json({ error: mapped.message });
+      return;
+    }
+    const row = ((await response.json()) as RecordValue[])[0];
+    if (!row) {
+      res.status(502).json({ error: "The moderator assignment could not be saved." });
+      return;
+    }
+    res.json(RemoveParkPackModeratorResponse.parse(serializeParkPackModerator(row)));
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to remove park pack moderator");
+    res.status(502).json({ error: "Unable to remove this park-pack moderator right now." });
   }
 });
 

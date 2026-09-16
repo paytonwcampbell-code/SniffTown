@@ -62,14 +62,26 @@ export function isParkPackDetailViewerQueryKey(key: readonly unknown[]) {
   );
 }
 
+export type ParkPackMembershipView = "loading" | "nonmember" | "member";
+
+/**
+ * Private board data is only present for the current viewer's membership.
+ * Keep a response with private data visible while it refreshes, but do not
+ * treat a partial/member-shaped response as permission to render the board.
+ */
+export function deriveParkPackMembershipView(
+  viewerId: string | null,
+  detail: ParkPackDetail | undefined,
+): ParkPackMembershipView {
+  if (!viewerId) return "nonmember";
+  if (!detail) return "loading";
+  if (!detail.isMember) return "nonmember";
+  return detail.members !== null && detail.posts !== null ? "member" : "loading";
+}
+
 export function canRenderPrivateParkPackContent(
   viewerId: string | null,
   detail: ParkPackDetail | undefined,
 ) {
-  return Boolean(
-    viewerId &&
-      detail?.isMember &&
-      detail.members !== null &&
-      detail.posts !== null,
-  );
+  return deriveParkPackMembershipView(viewerId, detail) === "member";
 }

@@ -35,7 +35,7 @@ import { ActionButton, DogAvatar } from "@/components/Brand";
 import { useSession } from "@/context/SessionContext";
 import { useColors } from "@/hooks/useColors";
 import {
-  canRenderPrivateParkPackContent,
+  deriveParkPackMembershipView,
   getParkListViewerQueryKey,
   getParkPackDetailViewerQueryKey,
   getParkPackModeratorsViewerQueryKey,
@@ -127,6 +127,13 @@ export default function ParkPackDetailScreen() {
   } | null>(null);
   const [moderationMessage, setModerationMessage] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const currentViewerId = useRef(viewerId);
+  currentViewerId.current = viewerId;
+  const [membershipOverride, setMembershipOverride] = useState<{
+    parkId: string;
+    viewerId: string;
+    isMember: boolean;
+  } | null>(null);
   const [moderationLayout, setModerationLayout] = useState<{
     key: string;
     y: number;
@@ -136,7 +143,21 @@ export default function ParkPackDetailScreen() {
   const detail = useGetParkPackDetail(parkId, {
     query: { enabled: ready, queryKey: detailQueryKey },
   });
-  const canAccessPrivateContent = canRenderPrivateParkPackContent(viewerId, detail.data);
+  const park = detail.data;
+  const serverMembershipView = deriveParkPackMembershipView(viewerId, park);
+  const activeMembershipOverride =
+    membershipOverride?.parkId === parkId && membershipOverride.viewerId === viewerId
+      ? membershipOverride.isMember
+      : null;
+  const membershipView =
+    activeMembershipOverride === null
+      ? serverMembershipView
+      : activeMembershipOverride
+        ? serverMembershipView === "member"
+          ? "member"
+          : "loading"
+        : "nonmember";
+  const canAccessPrivateContent = membershipView === "member";
   const moderators = useGetParkPackModerators(parkId, {
     query: {
       enabled: ready && Boolean(parkId) && canAccessPrivateContent && Boolean(detail.data?.isCreator),
@@ -149,8 +170,7 @@ export default function ParkPackDetailScreen() {
       queryKey: getParkPackModerationReportsViewerQueryKey(parkId, viewerId),
     },
   });
-  const park = detail.data;
-  const canRenderPrivateContent = Boolean(park) && !detail.isFetching && canAccessPrivateContent;
+  const canRenderPrivateContent = canAccessPrivateContent;
   const isCreator = canRenderPrivateContent && Boolean(park?.isCreator);
   const moderationForbidden = errorStatus(moderationReports.error) === 403;
   // The detail response intentionally does not disclose designated moderators.
@@ -166,11 +186,41 @@ export default function ParkPackDetailScreen() {
     queryClient.invalidateQueries({ queryKey: detailQueryKey });
   const membership = useUpdateParkPackMembership({
     mutation: {
-      onSuccess: () => {
+      onMutate: async () => {
+        // Do not let a pre-mutation detail response overwrite the membership
+        // decision while the mutation is in flight.
+        await queryClient.cancelQueries({ queryKey: detailQueryKey });
+      },
+      onSuccess: (result) => {
+        if (!viewerId || currentViewerId.current !== viewerId) return;
+        // Keep the successful membership decision ahead of any in-flight detail
+        // response. A join response may briefly be followed by the previous
+        // nonmember response while the detail query is being refreshed.
+        setMembershipOverride({ parkId, viewerId, isMember: result.isMember });
+        queryClient.setQueryData<ParkPackDetail>(detailQueryKey, (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            isMember: result.isMember,
+            // Leaving must immediately discard private data. Joining keeps
+            // any same-viewer board cache while the fresh private response
+            // is loading.
+            members: result.isMember ? current.members : null,
+            posts: result.isMember ? current.posts : null,
+          };
+        });
         refreshDetail();
         queryClient.invalidateQueries({
           queryKey: getParkListViewerQueryKey(viewerId),
         });
+      },
+      onError: () => {
+        // cancelQueries prevents the canceled request from restoring stale
+        // state; revalidate only if this mutation still belongs to the active
+        // viewer, otherwise the old viewer's key must remain untouched.
+        if (viewerId && currentViewerId.current === viewerId) {
+          refreshDetail();
+        }
       },
     },
   });
@@ -194,6 +244,23 @@ export default function ParkPackDetailScreen() {
     tone: "success" | "error";
     text: string;
   } | null>(null);
+
+  useEffect(() => {
+    setMembershipOverride((current) =>
+      current?.parkId === parkId && current.viewerId === viewerId ? current : null,
+    );
+  }, [parkId, viewerId]);
+
+  useEffect(() => {
+    if (!membershipOverride || membershipOverride.viewerId !== viewerId) return;
+    const confirmed = deriveParkPackMembershipView(viewerId, park);
+    if (
+      (membershipOverride.isMember && confirmed === "member") ||
+      (!membershipOverride.isMember && confirmed === "nonmember")
+    ) {
+      setMembershipOverride(null);
+    }
+  }, [detail.data, membershipOverride, park, viewerId]);
 
   useEffect(() => {
     if (
@@ -479,7 +546,22 @@ export default function ParkPackDetailScreen() {
           <Text style={[styles.description, { color: c.foreground }]}>{park.description}</Text>
         )}
 
-        {!canRenderPrivateContent ? (
+        {membershipView === "loading" ? (
+          <View
+            testID="park-membership-loading"
+            style={[styles.privateCard, { backgroundColor: c.card, borderColor: c.border }]}
+          >
+            <View style={[styles.lock, { backgroundColor: c.secondary }]}>
+              <Feather name="loader" size={18} color={c.foreground} />
+            </View>
+            <Text style={[styles.privateTitle, { color: c.foreground }]}>
+              Loading your pack board…
+            </Text>
+            <Text style={[styles.privateCopy, { color: c.mutedForeground }]}>
+              Refreshing your neighbor access.
+            </Text>
+          </View>
+        ) : membershipView === "nonmember" ? (
           <View style={[styles.privateCard, { backgroundColor: c.card, borderColor: c.border }]}>
             <View style={[styles.lock, { backgroundColor: c.accent }]}>
               <Feather name="lock" size={18} color={c.accentForeground} />

@@ -5,3 +5,4 @@
 - [Mobile proximity privacy](mobile-proximity-privacy.md) — precise location is an opt-in native-app capability; web stays location-neutral and peers see only coarse distance.
 - [React Query bundling](react-query-bundling.md) — web production builds must dedupe React Query or workspace-generated hooks lose the app provider.
 - [Expo launch sessions](expo-launch-sessions.md) — confirm the Replit temporary account with Expo whoami before trusting a generated Expo Go QR code.
+- [Moderation alert delivery](moderation-alert-delivery.md) — Inbox delivery scope and race-safe acknowledgment of coalesced alerts.

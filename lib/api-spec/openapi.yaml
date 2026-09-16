@@ -24,6 +24,8 @@ tags:
     description: Contact messages
   - name: messaging
     description: Private member conversations
+  - name: notifications
+    description: Private in-app alerts
 paths:
   /healthz:
     get:
@@ -741,6 +743,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageStatus"
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List the signed-in member's private in-app notifications
+      description: Returns privacy-safe alerts for moderation queues the member can currently access.
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "401":
+          description: Authentication required
+  /notifications/{notificationId}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a private in-app notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationReadInput"
+      responses:
+        "200":
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationReadResult"
+        "400":
+          description: Invalid notification read acknowledgment
+        "401":
+          description: Authentication required
+        "404":
+          description: Notification not found or no longer accessible
   /conversations:
     get:
       operationId: listConversations
@@ -1503,6 +1553,63 @@ components:
         message:
           type: string
       required: [accepted, message]
+    NotificationData:
+      type: object
+      properties:
+        parkId:
+          type: string
+        packId:
+          type: string
+        screen:
+          type: string
+          enum: [moderation]
+      required: [parkId, packId, screen]
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        type:
+          type: string
+          enum: [park_post_report]
+        title:
+          type: string
+        body:
+          type: string
+        data:
+          $ref: "#/components/schemas/NotificationData"
+        createdAt:
+          type: string
+          format: date-time
+        revision:
+          type: string
+          minLength: 1
+          description: Opaque database timestamp revision used for read acknowledgments; do not parse or normalize it.
+        readAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [id, type, title, body, data, createdAt, revision, readAt]
+    NotificationReadResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        notificationId:
+          type: string
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        readAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [success, notificationId, readAt]
+    NotificationReadInput:
+      type: object
+      properties:
+        revision:
+          type: string
+          minLength: 1
+          description: Opaque notification revision copied from the list response without parsing or normalization.
+      required: [revision]
     ConversationSummary:
       type: object
       properties:

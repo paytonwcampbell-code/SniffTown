@@ -4,6 +4,7 @@ import authRouter from "./auth";
 import communityRouter from "./community";
 import contactRouter from "./contact";
 import messagingRouter from "./messaging";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(authRouter);
 router.use(communityRouter);
 router.use(contactRouter);
 router.use(messagingRouter);
+router.use(notificationsRouter);
 
 export default router;

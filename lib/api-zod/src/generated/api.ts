@@ -780,6 +780,58 @@ export const SendContactMessageResponse = zod.object({
 
 
 /**
+ * Returns privacy-safe alerts for moderation queues the member can currently access.
+ * @summary List the signed-in member's private in-app notifications
+ */
+export const listNotificationsResponseIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+
+export const ListNotificationsResponseItem = zod.object({
+  "id": zod.string().regex(listNotificationsResponseIdRegExp),
+  "type": zod.enum(['park_post_report']),
+  "title": zod.string(),
+  "body": zod.string(),
+  "data": zod.object({
+  "parkId": zod.string(),
+  "packId": zod.string(),
+  "screen": zod.enum(['moderation'])
+}),
+  "createdAt": zod.coerce.date(),
+  "revision": zod.string().min(1).describe('Opaque database timestamp revision used for read acknowledgments; do not parse or normalize it.'),
+  "readAt": zod.coerce.date().nullable()
+})
+export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem)
+
+
+/**
+ * @summary Mark a private in-app notification as read
+ */
+export const markNotificationReadPathNotificationIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const MarkNotificationReadParams = zod.object({
+  "notificationId": zod.coerce.string().regex(markNotificationReadPathNotificationIdRegExp)
+})
+
+
+
+
+export const MarkNotificationReadBody = zod.object({
+  "revision": zod.string().min(1).describe('Opaque notification revision copied from the list response without parsing or normalization.')
+})
+
+export const markNotificationReadResponseNotificationIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const MarkNotificationReadResponse = zod.object({
+  "success": zod.boolean(),
+  "notificationId": zod.string().regex(markNotificationReadResponseNotificationIdRegExp),
+  "readAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary List the signed-in member's conversations
  */
 export const listConversationsResponseIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');

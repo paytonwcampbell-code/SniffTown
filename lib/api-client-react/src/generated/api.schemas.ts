@@ -713,6 +713,59 @@ export interface MessageStatus {
   message: string;
 }
 
+export type NotificationDataScreen = typeof NotificationDataScreen[keyof typeof NotificationDataScreen];
+
+
+export const NotificationDataScreen = {
+  moderation: 'moderation',
+} as const;
+
+export interface NotificationData {
+  parkId: string;
+  packId: string;
+  screen: NotificationDataScreen;
+}
+
+export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
+
+
+export const NotificationType = {
+  park_post_report: 'park_post_report',
+} as const;
+
+export interface Notification {
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  data: NotificationData;
+  createdAt: string;
+  /**
+     * Opaque database timestamp revision used for read acknowledgments; do not parse or normalize it.
+     * @minLength 1
+     */
+  revision: string;
+  /** @nullable */
+  readAt: string | null;
+}
+
+export interface NotificationReadResult {
+  success: boolean;
+  /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
+  notificationId: string;
+  /** @nullable */
+  readAt: string | null;
+}
+
+export interface NotificationReadInput {
+  /**
+     * Opaque notification revision copied from the list response without parsing or normalization.
+     * @minLength 1
+     */
+  revision: string;
+}
+
 export interface ConversationSummary {
   /** @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ */
   id: string;

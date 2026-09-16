@@ -17,7 +17,7 @@ import {
 } from "@workspace/api-client-react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -101,8 +101,13 @@ function MemberRow({
 }
 
 export default function ParkPackDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, screen: requestedScreen } = useLocalSearchParams<{
+    id: string | string[];
+    screen?: string | string[];
+  }>();
   const parkId = Array.isArray(id) ? id[0] : id;
+  const moderationRequested =
+    (Array.isArray(requestedScreen) ? requestedScreen[0] : requestedScreen) === "moderation";
   const c = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -121,6 +126,12 @@ export default function ParkPackDetailScreen() {
     text: string;
   } | null>(null);
   const [moderationMessage, setModerationMessage] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const [moderationLayout, setModerationLayout] = useState<{
+    key: string;
+    y: number;
+  } | null>(null);
+  const moderationScrollKey = useRef<string | null>(null);
   const detailQueryKey = getParkPackDetailViewerQueryKey(parkId, viewerId);
   const detail = useGetParkPackDetail(parkId, {
     query: { enabled: ready, queryKey: detailQueryKey },
@@ -138,6 +149,19 @@ export default function ParkPackDetailScreen() {
       queryKey: getParkPackModerationReportsViewerQueryKey(parkId, viewerId),
     },
   });
+  const park = detail.data;
+  const canRenderPrivateContent = Boolean(park) && !detail.isFetching && canAccessPrivateContent;
+  const isCreator = canRenderPrivateContent && Boolean(park?.isCreator);
+  const moderationForbidden = errorStatus(moderationReports.error) === 403;
+  // The detail response intentionally does not disclose designated moderators.
+  // A member-only request lets moderators see the queue, while a 403 keeps it
+  // completely absent for other members.
+  const canReviewReports =
+    Boolean(park) &&
+    canRenderPrivateContent &&
+    !moderationForbidden &&
+    (isCreator || moderationReports.isSuccess);
+  const visibleModerationReports = (moderationReports.data ?? []).slice(0, 10);
   const refreshDetail = () =>
     queryClient.invalidateQueries({ queryKey: detailQueryKey });
   const membership = useUpdateParkPackMembership({
@@ -171,6 +195,29 @@ export default function ParkPackDetailScreen() {
     text: string;
   } | null>(null);
 
+  useEffect(() => {
+    if (
+      !moderationRequested ||
+      !parkId ||
+      !canReviewReports ||
+      !moderationLayout
+    ) {
+      return;
+    }
+    const key = `${parkId}:moderation`;
+    if (moderationLayout.key !== key) return;
+    if (moderationScrollKey.current === key) return;
+    const timeout = setTimeout(() => {
+      if (moderationScrollKey.current === key) return;
+      moderationScrollKey.current = key;
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, moderationLayout.y - 18),
+        animated: true,
+      });
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [canReviewReports, moderationLayout, moderationRequested, parkId]);
+
   if (!parkId || detail.isLoading) {
     return (
       <View style={[styles.center, { backgroundColor: c.background }]}>
@@ -179,7 +226,7 @@ export default function ParkPackDetailScreen() {
     );
   }
 
-  if (detail.isError || !detail.data) {
+  if (detail.isError || !park) {
     return (
       <View style={[styles.center, { backgroundColor: c.background }]}>
         <Feather name="map-pin" size={28} color={c.mutedForeground} />
@@ -191,20 +238,8 @@ export default function ParkPackDetailScreen() {
     );
   }
 
-  const park = detail.data;
-  const canRenderPrivateContent = !detail.isFetching && canAccessPrivateContent;
-  const isCreator = canRenderPrivateContent && park.isCreator;
   const members = canRenderPrivateContent ? park.members ?? [] : [];
   const posts = canRenderPrivateContent ? park.posts ?? [] : [];
-  const moderationForbidden = errorStatus(moderationReports.error) === 403;
-  // The detail response intentionally does not disclose designated moderators.
-  // A member-only request lets moderators see the queue, while a 403 keeps it
-  // completely absent for other members.
-  const canReviewReports =
-    canRenderPrivateContent &&
-    !moderationForbidden &&
-    (isCreator || moderationReports.isSuccess);
-  const visibleModerationReports = (moderationReports.data ?? []).slice(0, 10);
   const submitPost = () => {
     const trimmed = content.trim();
     if (!canRenderPrivateContent || !trimmed || createPost.isPending) return;
@@ -404,6 +439,7 @@ export default function ParkPackDetailScreen() {
       keyboardVerticalOffset={0}
     >
       <ScrollView
+        ref={scrollRef}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.content,
@@ -708,7 +744,20 @@ export default function ParkPackDetailScreen() {
               )}
             </View>
             {canReviewReports && (
-              <View style={[styles.moderationCard, { backgroundColor: c.card, borderColor: c.border }]}>
+              <View
+                testID="park-moderation-queue"
+                onLayout={(event) => {
+                  const y = event.nativeEvent.layout.y;
+                  const key = `${parkId}:moderation`;
+                  // This card is a direct child of ScrollView's content container
+                  // (the fragment above does not create a native wrapper), so y is
+                  // already in the content coordinate space used by scrollTo.
+                  setModerationLayout((current) =>
+                    current?.key === key && current.y === y ? current : { key, y },
+                  );
+                }}
+                style={[styles.moderationCard, { backgroundColor: c.card, borderColor: c.border }]}
+              >
                 <View style={styles.sectionHeading}>
                   <View style={styles.moderationHeading}>
                     <View style={[styles.moderationIcon, { backgroundColor: c.secondary }]}>

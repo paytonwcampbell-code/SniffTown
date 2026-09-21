@@ -3,9 +3,9 @@ name: Supabase user sessions
 description: Why authenticated member requests must bypass the project connector.
 ---
 
-Use the Supabase connector for project-level anonymous data access, but send RLS-protected member requests directly to the Supabase project with its public anon key plus the member bearer token.
+Use direct Supabase project access for both anonymous/auth requests and RLS-protected member requests, with the public anon key and, for member operations, the member bearer token.
 
-**Why:** The connector accepted password grants but returned 401 when forwarding the freshly issued member token to the current-user endpoint. Direct Supabase requests preserved the end-user identity and restored existing-account sign-in.
+**Why:** The connector rejected forwarded member tokens. Later, removal of the runtime REST connection broke signup/signin and public directory reads even though the separate management MCP remained connected. Management access does not supply app-runtime connectivity.
 
 **How to apply:** Keep the project URL as a non-secret environment variable and the anon key in Replit Secrets. Never substitute the service-role key or weaken RLS to work around member-session failures.
 

@@ -12,17 +12,24 @@ export async function supabaseRequest(
   path: string,
   init: ConnectorRequestInit = {},
 ): Promise<Response> {
-  return connectors.proxy("supabase", path, init);
+  return directSupabaseRequest(path, init);
 }
 
 export async function supabaseUserRequest(
   path: string,
   init: ConnectorRequestInit = {},
 ): Promise<Response> {
+  return directSupabaseRequest(path, init);
+}
+
+async function directSupabaseRequest(
+  path: string,
+  init: ConnectorRequestInit,
+): Promise<Response> {
   const url = process.env.SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
-    throw new Error("Authenticated Supabase access is not configured.");
+    throw new Error("Supabase access is not configured.");
   }
 
   return fetch(`${url.replace(/\/+$/, "")}${path}`, {

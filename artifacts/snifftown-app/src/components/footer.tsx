@@ -45,8 +45,9 @@ export function Footer() {
             &copy; {new Date().getFullYear()} SniffTown. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">Privacy</span>
-            <span className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">Terms</span>
+            <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground">Privacy</Link>
+            <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground">Terms</Link>
+            <Link href="/delete-account" className="text-xs text-muted-foreground hover:text-foreground">Delete account</Link>
           </div>
         </div>
       </div>

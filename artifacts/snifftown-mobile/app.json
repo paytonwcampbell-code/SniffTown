@@ -11,8 +11,20 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.snifftown.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "SniffTown uses your location while you browse to show dogs within your chosen distance. Your exact location is never shown to other members."
+        "NSLocationWhenInUseUsageDescription": "SniffTown uses your location while you browse to show dogs within your chosen distance. Your exact location is never shown to other members.",
+        "ITSAppUsesNonExemptEncryption": false
       }
+    },
+    "android": {
+      "package": "com.snifftown.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#fcfbf7"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -20,6 +32,15 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/snifftown-logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#fcfbf7"
+        }
+      ],
       [
         "expo-location",
         {

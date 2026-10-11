@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getCurrentUser, refreshSession, setAuthTokenGetter, signOut as requestSignOut, type CurrentUser } from "@workspace/api-client-react";
+import { deleteAccount as requestDeleteAccount, getCurrentUser, refreshSession, setAuthTokenGetter, signOut as requestSignOut, type CurrentUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
@@ -9,7 +9,7 @@ import { isParkPackDetailViewerQueryKey } from "@/lib/park-pack";
 const ACCESS = "snifftown.access", REFRESH = "snifftown.refresh";
 // AsyncStorage is only used by Expo's browser preview; iOS production uses Keychain-backed SecureStore.
 const sessionStorage = Platform.OS === "web" ? { getItemAsync: AsyncStorage.getItem, setItemAsync: AsyncStorage.setItem, deleteItemAsync: AsyncStorage.removeItem } : SecureStore;
-type Value = { user: CurrentUser | null; ready: boolean; saveSession: (access: string, refresh: string, user: CurrentUser) => Promise<void>; refresh: () => Promise<boolean>; signOut: () => Promise<void> };
+type Value = { user: CurrentUser | null; ready: boolean; saveSession: (access: string, refresh: string, user: CurrentUser) => Promise<void>; refresh: () => Promise<boolean>; signOut: () => Promise<void>; deleteAccount: () => Promise<void> };
 const SessionContext = createContext<Value | null>(null);
 setAuthTokenGetter(() => sessionStorage.getItemAsync(ACCESS));
 
@@ -34,6 +34,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
    })();
   },[ready,user?.id,queryClient]);
  const signOut=async()=>{await refresh();try{await requestSignOut();}catch{/* always remove local credentials */}await clear();};
- return <SessionContext.Provider value={{user,ready,saveSession,refresh,signOut}}>{children}</SessionContext.Provider>;
+ // Deletion needs a live session; on failure the member stays signed in so nothing looks deleted when it was not.
+ const deleteAccount=async()=>{if(!await refresh())throw new Error("Please sign in again, then delete your account.");await requestDeleteAccount();await clear();queryClient.clear();};
+ return <SessionContext.Provider value={{user,ready,saveSession,refresh,signOut,deleteAccount}}>{children}</SessionContext.Provider>;
 }
 export function useSession(){const value=useContext(SessionContext);if(!value)throw new Error("useSession must be used within SessionProvider");return value;}

@@ -56,6 +56,7 @@ import {
   supabaseRequest,
   supabaseUserRequest,
 } from "../lib/connectors";
+import { blockedUserIds } from "../lib/blocks";
 import { getAccessToken } from "../lib/session-auth";
 import { rankDogs, toDogWritePayload } from "../lib/dog-profile";
 import {
@@ -666,13 +667,16 @@ router.get("/dogs", async (req, res) => {
       res.status(401).json({ error: "Sign in to find dogs near you." });
       return;
     }
-    const [dogs, profiles, familiarRows] = await Promise.all([
+    const [dogs, profiles, familiarRows, blocked] = await Promise.all([
       rpcRows("get_dogs_for_matching_v2", authHeaders),
       jsonRows("/rest/v1/profiles?select=id,full_name", authHeaders),
       jsonRows(
         "/rest/v1/dog_familiars?select=marked_dog_id",
         authHeaders,
       ),
+      currentUserId
+        ? blockedUserIds(currentUserId, authHeaders)
+        : Promise.resolve(new Set<string>()),
     ]);
 
     const profileNames = new Map(
@@ -703,7 +707,9 @@ router.get("/dogs", async (req, res) => {
       }
     }
     const radius = parsed.data.radiusMiles ?? 2;
-    const rankedInput = dogs.map((dog) => ({
+    const rankedInput = dogs
+      .filter((dog) => !blocked.has(String(dog.user_id)))
+      .map((dog) => ({
       ...profileFields(dog),
       id: String(dog.id),
       ownerId: String(dog.user_id),

@@ -9,6 +9,7 @@ import {
   SendMessageResponse,
 } from "@workspace/api-zod";
 import { supabaseUserRequest } from "../lib/connectors";
+import { blockedUserIds, isBlockedWith } from "../lib/blocks";
 import { getAccessToken } from "../lib/session-auth";
 
 const router: IRouter = Router();
@@ -146,29 +147,41 @@ router.get("/conversations", async (req, res) => {
     if (!response.ok) {
       throw new Error("Supabase request failed.");
     }
-    const rows = (await response.json()) as Row[];
-    const conversations = rows.map((row) => ({
-      id: String(row.id),
-      participant1Id: String(row.participant_1_id),
-      participant2Id: String(row.participant_2_id),
-      lastMessageAt:
-        typeof row.last_message_at === "string" ? row.last_message_at : null,
-      createdAt: String(row.created_at),
-      otherDogName:
-        typeof row.other_dog_name === "string" ? row.other_dog_name : null,
-      otherOwnerName:
-        typeof row.other_owner_name === "string" ? row.other_owner_name : null,
-      otherDogPhotoUrl:
-        typeof row.other_dog_photo_url === "string"
-          ? row.other_dog_photo_url
-          : null,
-      otherDogId: typeof row.other_dog_id === "string" ? row.other_dog_id : null,
-      otherUserId:
-        typeof row.other_user_id === "string" ? row.other_user_id : null,
-      lastMessage:
-        typeof row.last_message === "string" ? row.last_message : null,
-      unreadCount: Number(row.unread_count ?? 0),
-    }));
+    const [rows, blocked] = await Promise.all([
+      response.json() as Promise<Row[]>,
+      blockedUserIds(user.id, user.headers),
+    ]);
+    const conversations = rows
+      .filter(
+        (row) =>
+          typeof row.other_user_id !== "string" ||
+          !blocked.has(row.other_user_id),
+      )
+      .map((row) => ({
+        id: String(row.id),
+        participant1Id: String(row.participant_1_id),
+        participant2Id: String(row.participant_2_id),
+        lastMessageAt:
+          typeof row.last_message_at === "string" ? row.last_message_at : null,
+        createdAt: String(row.created_at),
+        otherDogName:
+          typeof row.other_dog_name === "string" ? row.other_dog_name : null,
+        otherOwnerName:
+          typeof row.other_owner_name === "string"
+            ? row.other_owner_name
+            : null,
+        otherDogPhotoUrl:
+          typeof row.other_dog_photo_url === "string"
+            ? row.other_dog_photo_url
+            : null,
+        otherDogId:
+          typeof row.other_dog_id === "string" ? row.other_dog_id : null,
+        otherUserId:
+          typeof row.other_user_id === "string" ? row.other_user_id : null,
+        lastMessage:
+          typeof row.last_message === "string" ? row.last_message : null,
+        unreadCount: Number(row.unread_count ?? 0),
+      }));
     res.json(ListConversationsResponse.parse(conversations));
   } catch {
     res.status(502).json({ error: "Unable to load conversations right now." });
@@ -224,6 +237,10 @@ router.post("/messages", async (req, res) => {
     }
     if (parsed.data.receiverId === user.id) {
       res.status(400).json({ error: "You cannot message yourself." });
+      return;
+    }
+    if (await isBlockedWith(user.headers, parsed.data.receiverId)) {
+      res.status(403).json({ error: "You can't message this member." });
       return;
     }
 

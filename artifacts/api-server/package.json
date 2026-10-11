@@ -7,9 +7,10 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "test": "node --experimental-strip-types --test src/lib/connectors.test.ts src/lib/dog-profile.test.ts src/lib/park-pack.test.ts && pnpm run test:moderation && pnpm run test:notifications",
+    "test": "node --experimental-strip-types --test src/lib/connectors.test.ts src/lib/dog-profile.test.ts src/lib/park-pack.test.ts && pnpm run test:moderation && pnpm run test:notifications && pnpm run test:safety",
     "test:moderation": "esbuild src/routes/community-moderation.test.ts --bundle --platform=node --format=esm --external:express --external:@replit/connectors-sdk --outfile=dist/community-moderation.test.mjs && node --test dist/community-moderation.test.mjs",
     "test:notifications": "esbuild src/routes/notifications.test.ts --bundle --platform=node --format=esm --external:express --external:@replit/connectors-sdk --outfile=dist/notifications.test.mjs && node --test dist/notifications.test.mjs",
+    "test:safety": "esbuild src/routes/safety.test.ts --bundle --platform=node --format=esm --external:express --external:cookie-parser --external:@replit/connectors-sdk --outfile=dist/safety.test.mjs && node --test dist/safety.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -46,7 +46,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Apply `supabase/migrations/20261011120000_account_deletion_blocks_and_user_reports.sql` in the Supabase SQL editor before relying on account deletion, blocking or member reports. Until it is applied, block filters fall back to "nobody blocked" and `DELETE /api/auth/account` / reports return errors. `supabase/tests/account_deletion_blocks_and_user_reports.sql` is the matching rollback-only check.
+- Member reports land in the Supabase `user_reports` table. Set `SNIFFTOWN_MODERATION_EMAIL` to also get an email for each report (sent through the Resend connector). App Store rules expect reports to be acted on within 24 hours.
+- Mobile store builds use `artifacts/snifftown-mobile/eas.json`; production builds point the app at `https://snifftown.com/api`.
 
 ## Pointers
 

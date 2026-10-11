@@ -15,6 +15,7 @@ import NewDog from '@/pages/dogs/new';
 import EditDog from '@/pages/dogs/edit';
 import DogProfile from '@/pages/dogs/profile';
 import Messages from '@/pages/messages';
+import { DeleteAccount, Privacy, Terms } from '@/pages/legal';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,9 @@ function Router() {
             <Route path="/dogs/edit" component={EditDog} />
             <Route path="/dogs/:dogId" component={DogProfile} />
             <Route path="/messages" component={Messages} />
+            <Route path="/privacy" component={Privacy} />
+            <Route path="/terms" component={Terms} />
+            <Route path="/delete-account" component={DeleteAccount} />
             <Route component={NotFound} />
           </Switch>
         </RoutedErrorBoundary>

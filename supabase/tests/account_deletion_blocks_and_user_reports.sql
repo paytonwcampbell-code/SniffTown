@@ -42,20 +42,23 @@ begin
   insert into public.pack_moderators (pack_id, user_id)
   values ('20000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000022');
 
-  insert into public.pack_posts (pack_id, author_id, content)
+  insert into public.pack_posts (pack_id, author_id, title, content)
   values
-    ('20000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000021', 'Post by the leaving member'),
-    ('20000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000023', 'Post by a staying member'),
-    ('20000000-0000-4000-8000-000000000022', '10000000-0000-4000-8000-000000000021', 'Post in the solo pack');
+    ('20000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000021', 'Leaving member fixture', 'Post by the leaving member'),
+    ('20000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000023', 'Staying member fixture', 'Post by a staying member'),
+    ('20000000-0000-4000-8000-000000000022', '10000000-0000-4000-8000-000000000021', 'Solo pack fixture', 'Post in the solo pack');
 
   insert into public.dogs (id, user_id, name)
   values
     ('40000000-0000-4000-8000-000000000021', '10000000-0000-4000-8000-000000000021', 'Leaving dog'),
+    ('40000000-0000-4000-8000-000000000022', '10000000-0000-4000-8000-000000000022', 'Moderator dog'),
     ('40000000-0000-4000-8000-000000000023', '10000000-0000-4000-8000-000000000023', 'Staying dog');
 
-  insert into public.dog_familiars (user_id, marked_dog_id)
+  insert into public.dog_familiars (marker_user_id, marked_dog_id)
   values
     ('10000000-0000-4000-8000-000000000023', '40000000-0000-4000-8000-000000000021'),
+    ('10000000-0000-4000-8000-000000000023', '40000000-0000-4000-8000-000000000022'),
+    ('10000000-0000-4000-8000-000000000022', '40000000-0000-4000-8000-000000000023'),
     ('10000000-0000-4000-8000-000000000021', '40000000-0000-4000-8000-000000000023');
 end
 $$;
@@ -84,6 +87,12 @@ begin
 
   -- Blocking.
   perform set_config('request.jwt.claim.sub', moderator_id::text, true);
+  -- Establish ordinary messaging eligibility first; unblocking must restore
+  -- that permission, not bypass SniffTown's existing relationship rules.
+  insert into public.conversations (participant_1_id, participant_2_id)
+  values (moderator_id, member_id);
+  insert into public.messages (sender_id, receiver_id, content)
+  values (moderator_id, member_id, 'Eligible before blocking');
   insert into public.user_blocks (blocker_id, blocked_id) values (moderator_id, member_id);
 
   begin
@@ -191,7 +200,7 @@ begin
      or exists (select 1 from public.pack_posts where author_id = leaving_id)
      or exists (select 1 from public.messages where leaving_id in (sender_id, receiver_id))
      or exists (select 1 from public.conversations where leaving_id in (participant_1_id, participant_2_id))
-     or exists (select 1 from public.dog_familiars where user_id = leaving_id)
+     or exists (select 1 from public.dog_familiars where marker_user_id = leaving_id)
      or exists (select 1 from public.dog_familiars where marked_dog_id = '40000000-0000-4000-8000-000000000021')
      or exists (select 1 from public.user_reports where reported_user_id = leaving_id) then
     raise exception 'the deleted member left data behind';

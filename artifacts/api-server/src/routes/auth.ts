@@ -170,6 +170,42 @@ router.post("/auth/signout", async (req, res) => {
   res.status(204).send();
 });
 
+router.delete("/auth/account", async (req, res) => {
+  const token = getAccessToken(req);
+  if (!token) {
+    res.status(401).json({ error: "Sign in to delete your account." });
+    return;
+  }
+
+  try {
+    const response = await supabaseUserRequest("/rest/v1/rpc/delete_my_account", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    if (!response.ok) {
+      const error = await readProviderError(response);
+      if (response.status === 401) {
+        res.status(401).json({ error: "Sign in again to delete your account." });
+        return;
+      }
+      req.log.error({ providerError: error }, "Supabase rejected account deletion");
+      res.status(502).json({ error: "We could not delete your account right now. Nothing was removed." });
+      return;
+    }
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to delete account");
+    res.status(502).json({ error: "We could not delete your account right now. Nothing was removed." });
+    return;
+  }
+
+  clearSessionCookies(res);
+  res.status(204).send();
+});
+
 router.post("/auth/refresh", async (req, res) => {
   if (!isMobileClient(req)) {
     res.status(400).json({ error: "Native session refresh requires the mobile client header." });

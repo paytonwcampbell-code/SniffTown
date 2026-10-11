@@ -5,6 +5,49 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface BlockedMember {
+  userId: string;
+  blockedAt: string;
+}
+
+export type MemberReportInputContext = typeof MemberReportInputContext[keyof typeof MemberReportInputContext];
+
+
+export const MemberReportInputContext = {
+  conversation: 'conversation',
+  dog_profile: 'dog_profile',
+} as const;
+
+export type MemberReportInputReason = typeof MemberReportInputReason[keyof typeof MemberReportInputReason];
+
+
+export const MemberReportInputReason = {
+  spam: 'spam',
+  harassment: 'harassment',
+  unsafe: 'unsafe',
+  inappropriate: 'inappropriate',
+  other: 'other',
+} as const;
+
+export interface MemberReportInput {
+  context: MemberReportInputContext;
+  reason: MemberReportInputReason;
+  /** @maxLength 500 */
+  details?: string;
+}
+
+export type MemberReportResultStatus = typeof MemberReportResultStatus[keyof typeof MemberReportResultStatus];
+
+
+export const MemberReportResultStatus = {
+  open: 'open',
+} as const;
+
+export interface MemberReportResult {
+  reportId: string;
+  status: MemberReportResultStatus;
+}
+
 export interface HealthStatus {
   status: string;
 }

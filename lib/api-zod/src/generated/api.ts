@@ -931,3 +931,74 @@ export const MarkConversationReadResponse = zod.object({
 })
 
 
+/**
+ * Deletes the member's login, dog profiles, messages, pack memberships and posts. Park packs the member created are handed to a remaining moderator or member; packs with nobody else in them are removed. This cannot be undone.
+ * @summary Permanently delete the signed-in member's account
+ */
+export const DeleteAccountResponse = zod.void()
+
+
+/**
+ * @summary List members the signed-in member has blocked
+ */
+export const ListBlockedMembersResponseItem = zod.object({
+  "userId": zod.string(),
+  "blockedAt": zod.string()
+})
+export const ListBlockedMembersResponse = zod.array(ListBlockedMembersResponseItem)
+
+
+/**
+ * Blocked members cannot message each other in either direction, and their conversation is hidden from the blocker's inbox. Blocking is private; the blocked member is not told.
+ * @summary Block a member
+ */
+export const blockMemberPathUserIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const BlockMemberParams = zod.object({
+  "userId": zod.coerce.string().regex(blockMemberPathUserIdRegExp)
+})
+
+export const BlockMemberResponse = zod.void()
+
+
+/**
+ * @summary Unblock a member
+ */
+export const unblockMemberPathUserIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const UnblockMemberParams = zod.object({
+  "userId": zod.coerce.string().regex(unblockMemberPathUserIdRegExp)
+})
+
+export const UnblockMemberResponse = zod.void()
+
+
+/**
+ * Reports go to a private review queue. A member may file up to ten reports per day.
+ * @summary Report a member to the SniffTown team
+ */
+export const reportMemberPathUserIdRegExp = new RegExp('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$');
+
+
+export const ReportMemberParams = zod.object({
+  "userId": zod.coerce.string().regex(reportMemberPathUserIdRegExp)
+})
+
+export const reportMemberBodyDetailsMax = 500;
+
+
+
+export const ReportMemberBody = zod.object({
+  "context": zod.enum(['conversation', 'dog_profile']),
+  "reason": zod.enum(['spam', 'harassment', 'unsafe', 'inappropriate', 'other']),
+  "details": zod.string().max(reportMemberBodyDetailsMax).optional()
+})
+
+export const ReportMemberResponse = zod.object({
+  "reportId": zod.string(),
+  "status": zod.enum(['open'])
+})
+
+

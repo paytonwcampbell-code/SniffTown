@@ -8,6 +8,7 @@
 
 export * from './authCredentials';
 export * from './authResult';
+export * from './blockedMember';
 export * from './contactMessage';
 export * from './conversationReadResult';
 export * from './conversationSummary';
@@ -40,6 +41,11 @@ export * from './dogSize';
 export * from './healthStatus';
 export * from './incomingPackRequest';
 export * from './listDogsParams';
+export * from './memberReportInput';
+export * from './memberReportInputContext';
+export * from './memberReportInputReason';
+export * from './memberReportResult';
+export * from './memberReportResultStatus';
 export * from './message';
 export * from './messageInput';
 export * from './messageStatus';

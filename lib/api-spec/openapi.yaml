@@ -26,6 +26,8 @@ tags:
     description: Private member conversations
   - name: notifications
     description: Private in-app alerts
+  - name: safety
+    description: Blocking and reporting members
 paths:
   /healthz:
     get:
@@ -877,8 +879,99 @@ paths:
           description: Authentication required
         "404":
           description: Conversation not found
+  /auth/account:
+    delete:
+      operationId: deleteAccount
+      tags: [auth]
+      summary: Permanently delete the signed-in member's account
+      description: Deletes the member's login, dog profiles, messages, pack memberships and posts. Park packs the member created are handed to a remaining moderator or member; packs with nobody else in them are removed. This cannot be undone.
+      responses:
+        "204":
+          description: Account deleted and session cleared
+        "401":
+          description: Authentication required
+  /blocks:
+    get:
+      operationId: listBlockedMembers
+      tags: [safety]
+      summary: List members the signed-in member has blocked
+      responses:
+        "200":
+          description: Blocked members, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BlockedMember"
+        "401":
+          description: Authentication required
+  /users/{userId}/block:
+    put:
+      operationId: blockMember
+      tags: [safety]
+      summary: Block a member
+      description: Blocked members cannot message each other in either direction, and their conversation is hidden from the blocker's inbox. Blocking is private; the blocked member is not told.
+      parameters:
+        - $ref: "#/components/parameters/MemberUserId"
+      responses:
+        "204":
+          description: Member blocked (idempotent)
+        "400":
+          description: Members cannot block themselves
+        "401":
+          description: Authentication required
+        "404":
+          description: Member not found
+    delete:
+      operationId: unblockMember
+      tags: [safety]
+      summary: Unblock a member
+      parameters:
+        - $ref: "#/components/parameters/MemberUserId"
+      responses:
+        "204":
+          description: Member unblocked (idempotent)
+        "401":
+          description: Authentication required
+  /users/{userId}/reports:
+    post:
+      operationId: reportMember
+      tags: [safety]
+      summary: Report a member to the SniffTown team
+      description: Reports go to a private review queue. A member may file up to ten reports per day.
+      parameters:
+        - $ref: "#/components/parameters/MemberUserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberReportInput"
+      responses:
+        "201":
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberReportResult"
+        "400":
+          description: Invalid report
+        "401":
+          description: Authentication required
+        "404":
+          description: Member not found
+        "429":
+          description: Report rate limit reached
 components:
   parameters:
+    MemberUserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
     SniffTownClient:
       name: X-SniffTown-Client
       in: header
@@ -888,6 +981,36 @@ components:
         type: string
         enum: [mobile]
   schemas:
+    BlockedMember:
+      type: object
+      properties:
+        userId:
+          type: string
+        blockedAt:
+          type: string
+      required: [userId, blockedAt]
+    MemberReportInput:
+      type: object
+      properties:
+        context:
+          type: string
+          enum: [conversation, dog_profile]
+        reason:
+          type: string
+          enum: [spam, harassment, unsafe, inappropriate, other]
+        details:
+          type: string
+          maxLength: 500
+      required: [context, reason]
+    MemberReportResult:
+      type: object
+      properties:
+        reportId:
+          type: string
+        status:
+          type: string
+          enum: [open]
+      required: [reportId, status]
     HealthStatus:
       type: object
       properties:

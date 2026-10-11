@@ -95,6 +95,29 @@ async function findConversation(
   return rows[0] ?? null;
 }
 
+async function blockedUserIds(user: AuthenticatedUser): Promise<Set<string>> {
+  const rows = await userRows(
+    `/rest/v1/user_blocks?select=blocked_id&blocker_id=eq.${encodeURIComponent(user.id)}`,
+    user.headers,
+  );
+  return new Set(rows.map((row) => String(row.blocked_id)));
+}
+
+async function isBlockedWith(
+  user: AuthenticatedUser,
+  otherUserId: string,
+): Promise<boolean> {
+  const response = await supabaseUserRequest("/rest/v1/rpc/is_blocked_with", {
+    method: "POST",
+    headers: { ...user.headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ other_user_id: otherUserId }),
+  });
+  if (!response.ok) {
+    throw new Error("Supabase request failed.");
+  }
+  return (await response.json()) === true;
+}
+
 function isParticipant(conversation: Row, userId: string): boolean {
   return (
     conversation.participant_1_id === userId ||
@@ -146,29 +169,41 @@ router.get("/conversations", async (req, res) => {
     if (!response.ok) {
       throw new Error("Supabase request failed.");
     }
-    const rows = (await response.json()) as Row[];
-    const conversations = rows.map((row) => ({
-      id: String(row.id),
-      participant1Id: String(row.participant_1_id),
-      participant2Id: String(row.participant_2_id),
-      lastMessageAt:
-        typeof row.last_message_at === "string" ? row.last_message_at : null,
-      createdAt: String(row.created_at),
-      otherDogName:
-        typeof row.other_dog_name === "string" ? row.other_dog_name : null,
-      otherOwnerName:
-        typeof row.other_owner_name === "string" ? row.other_owner_name : null,
-      otherDogPhotoUrl:
-        typeof row.other_dog_photo_url === "string"
-          ? row.other_dog_photo_url
-          : null,
-      otherDogId: typeof row.other_dog_id === "string" ? row.other_dog_id : null,
-      otherUserId:
-        typeof row.other_user_id === "string" ? row.other_user_id : null,
-      lastMessage:
-        typeof row.last_message === "string" ? row.last_message : null,
-      unreadCount: Number(row.unread_count ?? 0),
-    }));
+    const [rows, blocked] = await Promise.all([
+      response.json() as Promise<Row[]>,
+      blockedUserIds(user),
+    ]);
+    const conversations = rows
+      .filter(
+        (row) =>
+          typeof row.other_user_id !== "string" ||
+          !blocked.has(row.other_user_id),
+      )
+      .map((row) => ({
+        id: String(row.id),
+        participant1Id: String(row.participant_1_id),
+        participant2Id: String(row.participant_2_id),
+        lastMessageAt:
+          typeof row.last_message_at === "string" ? row.last_message_at : null,
+        createdAt: String(row.created_at),
+        otherDogName:
+          typeof row.other_dog_name === "string" ? row.other_dog_name : null,
+        otherOwnerName:
+          typeof row.other_owner_name === "string"
+            ? row.other_owner_name
+            : null,
+        otherDogPhotoUrl:
+          typeof row.other_dog_photo_url === "string"
+            ? row.other_dog_photo_url
+            : null,
+        otherDogId:
+          typeof row.other_dog_id === "string" ? row.other_dog_id : null,
+        otherUserId:
+          typeof row.other_user_id === "string" ? row.other_user_id : null,
+        lastMessage:
+          typeof row.last_message === "string" ? row.last_message : null,
+        unreadCount: Number(row.unread_count ?? 0),
+      }));
     res.json(ListConversationsResponse.parse(conversations));
   } catch {
     res.status(502).json({ error: "Unable to load conversations right now." });
@@ -224,6 +259,10 @@ router.post("/messages", async (req, res) => {
     }
     if (parsed.data.receiverId === user.id) {
       res.status(400).json({ error: "You cannot message yourself." });
+      return;
+    }
+    if (await isBlockedWith(user, parsed.data.receiverId)) {
+      res.status(403).json({ error: "You can't message this member." });
       return;
     }
 

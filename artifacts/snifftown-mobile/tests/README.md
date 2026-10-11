@@ -21,4 +21,8 @@ No running Expo server, device, credentials, or database is required.
 
 These tests protect screen behavior and the API orchestration contract. They
 do not validate real Supabase policies/persistence, real sign-in, or native
-keyboard and touch behavior on a device. They never create live park packs.
+keyboard and touch behavior on a device. They never create live park packs.- `member-safety.test.jsx` renders the actual report/block sheet and Settings
+  screen. It checks that reports send the chosen reason with trimmed details,
+  that blocking and account deletion only happen after the member confirms,
+  that a failed deletion keeps the member signed in with an explanation, and
+  that Settings links to the Privacy Policy, Terms and Blocked members.

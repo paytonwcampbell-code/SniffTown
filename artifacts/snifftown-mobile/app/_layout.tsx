@@ -32,6 +32,7 @@ function RootLayoutNav() {
       <Stack.Screen name="dog/[id]" options={{ title: 'Dog profile' }} />
       <Stack.Screen name="park/[id]" options={{ title: 'Park pack' }} />
       <Stack.Screen name="conversation/[id]" options={{ title: 'Conversation' }} />
+      <Stack.Screen name="blocked" options={{ title: 'Blocked members' }} />
     </Stack>
   );
 }

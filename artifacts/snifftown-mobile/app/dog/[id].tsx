@@ -1,4 +1,5 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   buildDogCompatibility,
@@ -13,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { ActionButton, DogAvatar } from "@/components/Brand";
 import { CompatibilitySummary } from "@/components/CompatibilitySummary";
+import { MemberSafetyButton, MemberSafetySheet } from "@/components/MemberSafety";
 import { useColors } from "@/hooks/useColors";
 import { useSession } from "@/context/SessionContext";
 
@@ -22,6 +24,7 @@ export default function DogProfile() {
   const router = useRouter();
   const qc = useQueryClient();
   const { user } = useSession();
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const dogs = useListDogs();
   const own = useGetMyDog({
     query: { enabled: Boolean(user?.id), queryKey: getGetMyDogQueryKey() },
@@ -55,6 +58,28 @@ export default function DogProfile() {
       style={{ backgroundColor: c.background }}
       contentContainerStyle={s.page}
     >
+      {user?.id && dog.ownerId && dog.ownerId !== user.id && (
+        <>
+          <Stack.Screen
+            options={{
+              headerRight: () => (
+                <MemberSafetyButton onPress={() => setSafetyOpen(true)} />
+              ),
+            }}
+          />
+          <MemberSafetySheet
+            visible={safetyOpen}
+            onClose={() => setSafetyOpen(false)}
+            userId={dog.ownerId}
+            name={dog.ownerName ?? `${dog.name}'s person`}
+            context="dog_profile"
+            onBlocked={() => {
+              qc.invalidateQueries({ queryKey: getListDogsQueryKey() });
+              router.back();
+            }}
+          />
+        </>
+      )}
       <DogAvatar name={dog.name} uri={dog.photoUrl} size={150} />
       <Text style={[s.name, { color: c.foreground }]}>{dog.name}</Text>
       <Text style={{ color: c.mutedForeground }}>

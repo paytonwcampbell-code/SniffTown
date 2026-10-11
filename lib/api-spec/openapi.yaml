@@ -986,9 +986,11 @@ components:
       properties:
         userId:
           type: string
+        displayName:
+          type: ["string", "null"]
         blockedAt:
           type: string
-      required: [userId, blockedAt]
+      required: [userId, displayName, blockedAt]
     MemberReportInput:
       type: object
       properties:

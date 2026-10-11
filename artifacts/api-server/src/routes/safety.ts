@@ -141,10 +141,29 @@ router.get("/blocks", async (req, res) => {
       throw new Error("Supabase request failed.");
     }
     const rows = (await response.json()) as Row[];
+    const names = new Map<string, string>();
+    if (rows.length > 0) {
+      const ids = rows.map((row) => String(row.blocked_id)).join(",");
+      const profiles = await supabaseUserRequest(
+        `/rest/v1/profiles?select=id,full_name&id=in.(${encodeURIComponent(ids)})`,
+        { headers: user.headers },
+      );
+      if (profiles.ok) {
+        for (const profile of (await profiles.json()) as Row[]) {
+          if (
+            typeof profile.full_name === "string" &&
+            profile.full_name.trim()
+          ) {
+            names.set(String(profile.id), profile.full_name.trim());
+          }
+        }
+      }
+    }
     res.json(
       ListBlockedMembersResponse.parse(
         rows.map((row) => ({
           userId: String(row.blocked_id),
+          displayName: names.get(String(row.blocked_id)) ?? null,
           blockedAt: String(row.created_at),
         })),
       ),

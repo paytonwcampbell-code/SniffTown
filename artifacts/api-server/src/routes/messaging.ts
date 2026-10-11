@@ -9,6 +9,7 @@ import {
   SendMessageResponse,
 } from "@workspace/api-zod";
 import { supabaseUserRequest } from "../lib/connectors";
+import { blockedUserIds, isBlockedWith } from "../lib/blocks";
 import { getAccessToken } from "../lib/session-auth";
 
 const router: IRouter = Router();
@@ -95,29 +96,6 @@ async function findConversation(
   return rows[0] ?? null;
 }
 
-async function blockedUserIds(user: AuthenticatedUser): Promise<Set<string>> {
-  const rows = await userRows(
-    `/rest/v1/user_blocks?select=blocked_id&blocker_id=eq.${encodeURIComponent(user.id)}`,
-    user.headers,
-  );
-  return new Set(rows.map((row) => String(row.blocked_id)));
-}
-
-async function isBlockedWith(
-  user: AuthenticatedUser,
-  otherUserId: string,
-): Promise<boolean> {
-  const response = await supabaseUserRequest("/rest/v1/rpc/is_blocked_with", {
-    method: "POST",
-    headers: { ...user.headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ other_user_id: otherUserId }),
-  });
-  if (!response.ok) {
-    throw new Error("Supabase request failed.");
-  }
-  return (await response.json()) === true;
-}
-
 function isParticipant(conversation: Row, userId: string): boolean {
   return (
     conversation.participant_1_id === userId ||
@@ -171,7 +149,7 @@ router.get("/conversations", async (req, res) => {
     }
     const [rows, blocked] = await Promise.all([
       response.json() as Promise<Row[]>,
-      blockedUserIds(user),
+      blockedUserIds(user.id, user.headers),
     ]);
     const conversations = rows
       .filter(
@@ -261,7 +239,7 @@ router.post("/messages", async (req, res) => {
       res.status(400).json({ error: "You cannot message yourself." });
       return;
     }
-    if (await isBlockedWith(user, parsed.data.receiverId)) {
+    if (await isBlockedWith(user.headers, parsed.data.receiverId)) {
       res.status(403).json({ error: "You can't message this member." });
       return;
     }

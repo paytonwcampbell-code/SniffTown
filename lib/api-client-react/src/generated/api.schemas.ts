@@ -7,6 +7,8 @@
  */
 export interface BlockedMember {
   userId: string;
+  /** @nullable */
+  displayName: string | null;
   blockedAt: string;
 }
 

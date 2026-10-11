@@ -87,6 +87,10 @@ globalThis.fetch = async (input, init) => {
     return new Response(null, { status: 204 });
   }
 
+  if (url.pathname === "/rest/v1/profiles") {
+    return jsonResponse([{ id: BLOCKED, full_name: "Blocked Neighbor" }]);
+  }
+
   if (url.pathname === "/rest/v1/rpc/report_user") {
     const target = (call.body as { target_user_id?: string }).target_user_id;
     if (target === GONE) {
@@ -222,7 +226,11 @@ test("blocked members are listed for the caller", async () => {
 
   assert.equal(response.status, 200);
   assert.deepEqual(response.body, [
-    { userId: BLOCKED, blockedAt: "2026-10-11T10:00:00+00:00" },
+    {
+      userId: BLOCKED,
+      displayName: "Blocked Neighbor",
+      blockedAt: "2026-10-11T10:00:00+00:00",
+    },
   ]);
 });
 

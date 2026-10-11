@@ -943,6 +943,7 @@ export const DeleteAccountResponse = zod.void()
  */
 export const ListBlockedMembersResponseItem = zod.object({
   "userId": zod.string(),
+  "displayName": zod.string().nullable(),
   "blockedAt": zod.string()
 })
 export const ListBlockedMembersResponse = zod.array(ListBlockedMembersResponseItem)

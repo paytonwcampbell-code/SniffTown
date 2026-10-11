@@ -1,5 +1,6 @@
 -- Run manually in the Supabase SQL editor after applying:
 --   20261011120000_account_deletion_blocks_and_user_reports.sql
+--   20261011180000_account_deletion_marker_cleanup.sql
 --
 -- This is rollback-only. It creates disposable auth users, packs, dogs and
 -- messages, exercises blocking, member reports and self-service account

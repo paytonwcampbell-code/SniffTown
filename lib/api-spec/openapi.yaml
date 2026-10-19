@@ -715,6 +715,52 @@ paths:
           description: Invalid refresh request
         "401":
           description: Invalid or expired refresh token
+  /auth/verified-session:
+    post:
+      operationId: completeEmailVerification
+      tags: [auth]
+      summary: Sign in after clicking an email verification link
+      description: Exchanges the session Supabase returns on the verification landing page for SniffTown's httpOnly session cookies. The access token is validated with Supabase before any cookie is set.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifiedSessionInput"
+      responses:
+        "200":
+          description: Verified and signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "400":
+          description: Missing session details
+        "401":
+          description: The verification session is invalid or expired
+  /auth/resend-verification:
+    post:
+      operationId: resendVerificationEmail
+      tags: [auth]
+      summary: Send a new email verification link
+      description: Always reports success for a well-formed email so the response never reveals whether an account exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendVerificationInput"
+      responses:
+        "202":
+          description: A new link was sent if an unverified account exists for this email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResendVerificationResult"
+        "400":
+          description: Invalid email
+        "429":
+          description: Too many requests; try again shortly
   /auth/me:
     get:
       operationId: getCurrentUser
@@ -1640,6 +1686,30 @@ components:
           type: string
           description: Present only when X-SniffTown-Client is mobile.
       required: [user, requiresEmailVerification, message]
+    VerifiedSessionInput:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          minLength: 1
+        refreshToken:
+          type: string
+          minLength: 1
+      required: [accessToken, refreshToken]
+    ResendVerificationInput:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 320
+      required: [email]
+    ResendVerificationResult:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
     RefreshSessionInput:
       type: object
       properties:

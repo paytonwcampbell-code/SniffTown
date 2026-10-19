@@ -16,6 +16,7 @@ import EditDog from '@/pages/dogs/edit';
 import DogProfile from '@/pages/dogs/profile';
 import Messages from '@/pages/messages';
 import { DeleteAccount, Privacy, Terms } from '@/pages/legal';
+import AuthVerified, { isVerificationReturn } from '@/pages/auth-verified';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +26,19 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Supabase returns members from the verification email to its configured Site
+// URL, which may be any page. Route those returns to the verified page so the
+// new session is picked up instead of being silently ignored.
+function VerificationReturnRedirect() {
+  const [pathname, setLocation] = useLocation();
+  useEffect(() => {
+    if (pathname !== "/auth/verified" && isVerificationReturn(window.location.hash, window.location.search)) {
+      setLocation(`/auth/verified${window.location.search}${window.location.hash}`, { replace: true });
+    }
+  }, [pathname, setLocation]);
+  return null;
+}
 
 function ScrollToTop() {
   const [pathname] = useLocation();
@@ -42,6 +56,7 @@ function Router() {
         <RoutedErrorBoundary>
           <Switch>
             <Route path="/" component={Home} />
+            <Route path="/auth/verified" component={AuthVerified} />
             <Route path="/auth" component={Auth} />
             <Route path="/pack" component={Pack} />
             <Route path="/dogs/new" component={NewDog} />
@@ -71,6 +86,7 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <ScrollToTop />
+          <VerificationReturnRedirect />
           <Router />
         </WouterRouter>
         <Toaster />

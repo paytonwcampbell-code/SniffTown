@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  useGetCurrentUser,
   useSignIn,
   useSignUp,
   getGetCurrentUserQueryKey,
@@ -25,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dog, MailCheck, AlertCircle } from "lucide-react";
+import { ResendVerificationForm } from "@/components/resend-verification";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -37,7 +39,26 @@ export default function Auth() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const [verificationSentTo, setVerificationSentTo] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  // While waiting on the verification email, notice when the link is opened
+  // in another tab of this browser (which signs the member in) and continue.
+  const { data: currentUser } = useGetCurrentUser({
+    query: {
+      queryKey: getGetCurrentUserQueryKey(),
+      enabled: Boolean(verificationSentTo),
+      refetchInterval: 4000,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+    },
+  });
+  useEffect(() => {
+    if (verificationSentTo && currentUser?.id) {
+      queryClient.invalidateQueries({ queryKey: getListDogsQueryKey() });
+      setLocation("/");
+    }
+  }, [verificationSentTo, currentUser?.id, queryClient, setLocation]);
 
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
@@ -58,7 +79,13 @@ export default function Auth() {
           setLocation("/");
         }
       },
-      onError: () => {
+      onError: (error) => {
+        const detail = (error as { data?: { error?: unknown } } | null)?.data?.error;
+        if (typeof detail === "string" && /not confirmed|not verified/i.test(detail)) {
+          setUnverifiedEmail(form.getValues("email"));
+          form.setError("root", { message: "Please verify your email first. Check your inbox for the link, or request a new one below." });
+          return;
+        }
         form.setError("root", { message: "Invalid email or password. Please try again." });
       }
     }
@@ -84,6 +111,7 @@ export default function Auth() {
 
   const onSubmit = (data: AuthFormValues) => {
     form.clearErrors("root");
+    setUnverifiedEmail(null);
     if (activeTab === "signin") {
       signIn.mutate({ data });
     } else {
@@ -101,13 +129,14 @@ export default function Auth() {
             </div>
             <CardTitle className="font-display text-2xl">Check your email</CardTitle>
             <CardDescription className="text-base">
-              We've sent a verification link to <span className="font-medium text-foreground">{verificationSentTo}</span>.
+              We've sent a verification link to <span className="font-medium text-foreground">{verificationSentTo}</span>. Open it in this browser and this page will continue automatically.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <Button variant="outline" className="w-full" onClick={() => setVerificationSentTo(null)}>
               Back to Sign In
             </Button>
+            <ResendVerificationForm initialEmail={verificationSentTo} />
           </CardContent>
         </Card>
       </div>
@@ -193,6 +222,7 @@ export default function Auth() {
                   </Button>
                 </form>
               </Form>
+              {unverifiedEmail && activeTab === "signin" && <ResendVerificationForm initialEmail={unverifiedEmail} />}
             </CardContent>
           </Card>
         </Tabs>

@@ -750,6 +750,50 @@ export const RefreshSessionResponse = zod.object({
 
 
 /**
+ * Exchanges the session Supabase returns on the verification landing page for SniffTown's httpOnly session cookies. The access token is validated with Supabase before any cookie is set.
+ * @summary Sign in after clicking an email verification link
+ */
+
+
+
+
+export const CompleteEmailVerificationBody = zod.object({
+  "accessToken": zod.string().min(1),
+  "refreshToken": zod.string().min(1)
+})
+
+export const CompleteEmailVerificationResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string().nullable(),
+  "email": zod.string().nullable(),
+  "displayName": zod.string().nullable()
+}),
+  "requiresEmailVerification": zod.boolean(),
+  "message": zod.string(),
+  "accessToken": zod.string().optional().describe('Present only when X-SniffTown-Client is mobile.'),
+  "refreshToken": zod.string().optional().describe('Present only when X-SniffTown-Client is mobile.')
+})
+
+
+/**
+ * Always reports success for a well-formed email so the response never reveals whether an account exists.
+ * @summary Send a new email verification link
+ */
+export const resendVerificationEmailBodyEmailMin = 3;
+export const resendVerificationEmailBodyEmailMax = 320;
+
+
+
+export const ResendVerificationEmailBody = zod.object({
+  "email": zod.string().min(resendVerificationEmailBodyEmailMin).max(resendVerificationEmailBodyEmailMax)
+})
+
+export const ResendVerificationEmailResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Get the signed-in user
  */
 export const GetCurrentUserResponse = zod.object({

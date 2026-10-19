@@ -1,6 +1,10 @@
 import { Router, type IRouter, type Response } from "express";
 import {
+  CompleteEmailVerificationBody,
+  CompleteEmailVerificationResponse,
   GetCurrentUserResponse,
+  ResendVerificationEmailBody,
+  ResendVerificationEmailResponse,
   SignInBody,
   SignInResponse,
   SignUpBody,
@@ -94,6 +98,24 @@ function mobileTokens(req: Parameters<typeof isMobileClient>[0], auth: SupabaseA
   };
 }
 
+const DEFAULT_SITE_URL = "https://snifftown.com";
+
+/**
+ * Where the email verification link should land. Browser sign-ups return to
+ * the site they signed up on; the mobile app has no origin, so it uses the
+ * public site. Supabase only honours URLs on its redirect allow list and falls
+ * back to its configured Site URL otherwise.
+ */
+export function verificationRedirectUrl(req: { headers: Record<string, string | string[] | undefined> }): string {
+  const header = req.headers.origin;
+  const origin = Array.isArray(header) ? header[0] : header;
+  const base =
+    origin && /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(origin)
+      ? origin
+      : (process.env.SNIFFTOWN_SITE_URL?.trim() || DEFAULT_SITE_URL);
+  return `${base.replace(/\/+$/, "")}/auth/verified`;
+}
+
 router.post("/auth/signup", async (req, res) => {
   const parsed = SignUpBody.safeParse(req.body);
   if (!parsed.success) {
@@ -101,11 +123,14 @@ router.post("/auth/signup", async (req, res) => {
     return;
   }
 
-  const response = await supabaseRequest("/auth/v1/signup", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(parsed.data),
-  });
+  const response = await supabaseRequest(
+    `/auth/v1/signup?redirect_to=${encodeURIComponent(verificationRedirectUrl(req))}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(parsed.data),
+    },
+  );
 
   if (!response.ok) {
     res.status(response.status).json({ error: await readProviderError(response) });
@@ -154,6 +179,69 @@ router.post("/auth/signin", async (req, res) => {
       requiresEmailVerification: false,
       message: "Welcome back to SniffTown.",
       ...mobileTokens(req, auth),
+    }),
+  );
+});
+
+router.post("/auth/verified-session", async (req, res) => {
+  const parsed = CompleteEmailVerificationBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "This verification link is incomplete." });
+    return;
+  }
+
+  // Never trust the tokens from the address bar on their own: Supabase must
+  // confirm the access token belongs to a real, verified member.
+  const response = await supabaseUserRequest("/auth/v1/user", {
+    headers: { Authorization: `Bearer ${parsed.data.accessToken}` },
+  });
+  if (!response.ok) {
+    res.status(401).json({ error: "This verification link has expired. Sign in or request a new link." });
+    return;
+  }
+
+  const user = (await response.json()) as SupabaseUser;
+  setSessionCookies(res, {
+    access_token: parsed.data.accessToken,
+    refresh_token: parsed.data.refreshToken,
+    user,
+  });
+  res.json(
+    CompleteEmailVerificationResponse.parse({
+      user: toCurrentUser(user),
+      requiresEmailVerification: false,
+      message: "Your email is verified. Welcome to SniffTown!",
+    }),
+  );
+});
+
+router.post("/auth/resend-verification", async (req, res) => {
+  const parsed = ResendVerificationEmailBody.safeParse(req.body);
+  const email = parsed.success ? parsed.data.email.trim() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: "Enter a valid email address." });
+    return;
+  }
+
+  const response = await supabaseRequest(
+    `/auth/v1/resend?redirect_to=${encodeURIComponent(verificationRedirectUrl(req))}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "signup", email }),
+    },
+  );
+  if (response.status === 429) {
+    res.status(429).json({ error: "Please wait a minute before requesting another link." });
+    return;
+  }
+  if (!response.ok) {
+    // Do not reveal whether the address belongs to an account.
+    req.log.warn({ providerError: await readProviderError(response) }, "Supabase did not resend verification email");
+  }
+  res.status(202).json(
+    ResendVerificationEmailResponse.parse({
+      message: "If that email has an account waiting to be verified, a new link is on its way.",
     }),
   );
 });

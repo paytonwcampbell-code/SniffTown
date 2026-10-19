@@ -737,6 +737,25 @@ export interface AuthResult {
   refreshToken?: string;
 }
 
+export interface VerifiedSessionInput {
+  /** @minLength 1 */
+  accessToken: string;
+  /** @minLength 1 */
+  refreshToken: string;
+}
+
+export interface ResendVerificationInput {
+  /**
+     * @minLength 3
+     * @maxLength 320
+     */
+  email: string;
+}
+
+export interface ResendVerificationResult {
+  message: string;
+}
+
 export interface RefreshSessionInput {
   /** @minLength 1 */
   refreshToken: string;
